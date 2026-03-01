@@ -23,7 +23,7 @@ open class QrCodeIntroStateProvider : PreviewParameterProvider<QrCodeIntroState>
 
 fun aQrCodeIntroState(
     appName: String = "AppName",
-    desktopAppName: String = "Element",
+    desktopAppName: String = "WanChat",
     cameraPermissionState: PermissionsState = aPermissionsState(
         showDialog = false,
         permission = Manifest.permission.CAMERA,

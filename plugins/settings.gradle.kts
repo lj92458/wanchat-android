@@ -5,7 +5,7 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-rootProject.name = "ElementX_plugins"
+rootProject.name = "WanChat_plugins"
 
 dependencyResolutionManagement {
     repositories {

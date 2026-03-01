@@ -18,6 +18,7 @@ import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.room.MessageEventType
+import io.element.android.libraries.matrix.api.room.custominfo.RoomCustomInfo
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.room.RoomMembersState
@@ -42,8 +43,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import org.matrix.rustcomponents.sdk.CallDeclineListener
+import org.matrix.rustcomponents.sdk.CustomStateListener
 import org.matrix.rustcomponents.sdk.RoomInfoListener
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
@@ -60,6 +65,7 @@ class RustBaseRoom(
     sessionCoroutineScope: CoroutineScope,
     roomInfoMapper: RoomInfoMapper,
     initialRoomInfo: RoomInfo,
+    initialRoomCustomInfo: RoomCustomInfo,
 ) : BaseRoom {
     override val roomId = RoomId(innerRoom.id())
 
@@ -82,6 +88,19 @@ class RustBaseRoom(
             }
         })
     }.stateIn(roomCoroutineScope, started = SharingStarted.Lazily, initialValue = initialRoomInfo)
+
+    // custom state
+    override val roomCustomInfoFlow: StateFlow<RoomCustomInfo> = mxCallbackFlow {
+        innerRoom.subscribeCustomStateUpdates(initialRoomCustomInfo.roomId, roomCustomInfoFlow.value.eventTypes, object : CustomStateListener {
+            override fun call(eventJsonArr: String) {
+                val jsonArr = Json.parseToJsonElement(eventJsonArr).jsonArray
+                roomCoroutineScope.launch {
+                    val roomCustomInfo = roomCustomInfoFlow.value.updateOrUpload(jsonArr) { }
+                    channel.trySend(roomCustomInfo.copy())
+                }
+            }
+        })
+    }.stateIn(roomCoroutineScope, started = SharingStarted.Lazily, initialValue = initialRoomCustomInfo)
 
     override fun predecessorRoom(): PredecessorRoom? {
         return innerRoom.predecessorRoom()?.map()
@@ -116,7 +135,6 @@ class RustBaseRoom(
     }
 
     override fun close() = destroy()
-
     override fun destroy() {
         innerRoom.destroy()
         roomCoroutineScope.cancel()

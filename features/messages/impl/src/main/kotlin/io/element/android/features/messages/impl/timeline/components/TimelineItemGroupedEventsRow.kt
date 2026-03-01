@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateMap
+import androidx.compose.runtime.snapshots.SnapshotStateSet
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import io.element.android.features.messages.impl.R
@@ -190,6 +192,7 @@ private fun TimelineItemGroupedEventsRowContent(
                         onJoinCallClick = {},
                         eventSink = eventSink,
                         eventContentView = eventContentView,
+                        selectedEvents = SnapshotStateMap(),
                     )
                 }
             }

@@ -10,6 +10,7 @@ package io.element.android.libraries.androidutils.system
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -20,9 +21,16 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.RequiresApi
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.net.toUri
+import androidx.fragment.app.FragmentActivity
 import io.element.android.libraries.androidutils.R
 import io.element.android.libraries.androidutils.compat.getApplicationInfoCompat
 import io.element.android.libraries.core.mimetype.MimeTypes
+
+fun Context.findFragmentActivity(): FragmentActivity? = when (this) {
+    is FragmentActivity -> this
+    is ContextWrapper -> baseContext.findFragmentActivity()
+    else -> null
+}
 
 /**
  * Return the application label of the provided package. If not found, the package is returned.
@@ -73,6 +81,7 @@ fun Context.copyToClipboard(
  * In android O will directly opens the notification settings, in lower version it will show the App settings
  */
 fun Context.startNotificationSettingsIntent(
+    packageName: String = this.packageName,
     activityResultLauncher: ActivityResultLauncher<Intent>? = null,
     noActivityFoundMessage: String = getString(R.string.error_no_compatible_app_found),
 ) {
@@ -101,6 +110,7 @@ fun Context.startNotificationSettingsIntent(
 }
 
 fun Context.openAppSettingsPage(
+    packageName: String = this.packageName,
     noActivityFoundMessage: String = getString(R.string.error_no_compatible_app_found),
 ) {
     try {
@@ -118,13 +128,17 @@ fun Context.openAppSettingsPage(
 
 @RequiresApi(Build.VERSION_CODES.O)
 fun Context.startInstallFromSourceIntent(
-    activityResultLauncher: ActivityResultLauncher<Intent>,
+    activityResultLauncher: ActivityResultLauncher<Intent>? = null,
     noActivityFoundMessage: String = getString(R.string.error_no_compatible_app_found),
 ) {
     val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
         .setData("package:$packageName".toUri())
     try {
-        activityResultLauncher.launch(intent)
+        if (activityResultLauncher != null) {
+            activityResultLauncher.launch(intent)
+        } else {
+            startActivity(intent)
+        }
     } catch (activityNotFoundException: ActivityNotFoundException) {
         toast(noActivityFoundMessage)
     }

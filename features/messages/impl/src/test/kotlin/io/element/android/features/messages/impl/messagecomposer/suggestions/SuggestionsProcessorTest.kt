@@ -171,7 +171,7 @@ class SuggestionsProcessorTest {
                 RoomAliasSuggestion(
                     roomAlias = A_ROOM_ALIAS,
                     roomId = aRoomSummary.roomId,
-                    roomName = "Element",
+                    roomName = "WanChat",
                     roomAvatarUrl = aRoomSummary.info.avatarUrl,
                 )
             ),
@@ -191,7 +191,7 @@ class SuggestionsProcessorTest {
                 RoomAliasSuggestion(
                     roomAlias = A_ROOM_ALIAS,
                     roomId = aRoomSummary.roomId,
-                    roomName = "Element",
+                    roomName = "WanChat",
                     roomAvatarUrl = aRoomSummary.info.avatarUrl,
                 )
             ),
@@ -203,7 +203,7 @@ class SuggestionsProcessorTest {
                 ResolvedSuggestion.Alias(
                     roomAlias = A_ROOM_ALIAS,
                     roomId = aRoomSummary.roomId,
-                    roomName = "Element",
+                    roomName = "WanChat",
                     roomAvatarUrl = aRoomSummary.info.avatarUrl,
                 )
             )

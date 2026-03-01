@@ -59,6 +59,14 @@
   <string name="screen_room_details_notification_mode_custom">"自定义"</string>
   <string name="screen_room_details_notification_mode_default">"默认"</string>
   <string name="screen_room_details_notification_title">"通知"</string>
+  <string name="screen_room_details_clear_title">"清空聊天记录"</string>
+  <string name="screen_room_details_clear_dialog">"注意：每删1条需要5秒，每删1万条需要14小时。"</string>
+  <string name="screen_room_details_cleared">"聊天记录已清空"</string>
+  <string name="screen_room_details_wait">"信息收集阶段，请不要做任何操作！已收集%1$d页记录。"</string>
+  <string name="screen_room_details_do_nothing">"请不要做任何操作！"</string>
+  <string name="screen_room_details_clear_running">"进行中 "</string>
+  <string name="screen_room_details_clear_stoped">"已停止"</string>
+  <string name="screen_room_details_clear_stop">"停止"</string>
   <string name="screen_room_details_pinned_events_row_title">"置顶消息"</string>
   <string name="screen_room_details_profile_row_title">"个人资料"</string>
   <string name="screen_room_details_requests_to_join_title">"申请加入"</string>

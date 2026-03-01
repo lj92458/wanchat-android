@@ -36,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -95,8 +96,8 @@ fun TimelineView(
     onContentClick: (TimelineItem.Event) -> Unit,
     onMessageLongClick: (TimelineItem.Event) -> Unit,
     onSwipeToReply: (TimelineItem.Event) -> Unit,
-    onReactionClick: (emoji: String, TimelineItem.Event) -> Unit,
-    onReactionLongClick: (emoji: String, TimelineItem.Event) -> Unit,
+    onReactionClick: (String, TimelineItem.Event) -> Unit,
+    onReactionLongClick: (String, TimelineItem.Event) -> Unit,
     onMoreReactionsClick: (TimelineItem.Event) -> Unit,
     onReadReceiptClick: (TimelineItem.Event) -> Unit,
     onJoinCallClick: () -> Unit,
@@ -104,6 +105,9 @@ fun TimelineView(
     lazyListState: LazyListState = rememberLazyListState(),
     forceJumpToBottomVisibility: Boolean = false,
     nestedScrollConnection: NestedScrollConnection = rememberNestedScrollInteropConnection(),
+    onToggleItemSelection: (TimelineItem.Event) -> Unit = {},
+    isMultiSelect: Boolean = false,
+    selectedEvents: SnapshotStateMap<TimelineItem.Event, Boolean>,
 ) {
     fun clearFocusRequestState() {
         state.eventSink(TimelineEvents.ClearFocusRequestState)
@@ -183,6 +187,9 @@ fun TimelineView(
                         onSwipeToReply = onSwipeToReply,
                         onJoinCallClick = onJoinCallClick,
                         eventSink = state.eventSink,
+                        onToggleItemSelection = onToggleItemSelection,
+                        isMultiSelect = isMultiSelect,
+                        selectedEvents = selectedEvents,
                     )
                 }
             }
@@ -413,6 +420,7 @@ internal fun TimelineViewPreview(
             onReadReceiptClick = {},
             onJoinCallClick = {},
             forceJumpToBottomVisibility = true,
+            selectedEvents = SnapshotStateMap(),
         )
     }
 }

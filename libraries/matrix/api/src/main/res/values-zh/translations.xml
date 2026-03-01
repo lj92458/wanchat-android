@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_room_auto_delete_none">"关闭"</string>
+    <string name="screen_room_auto_delete_30s">"30秒"</string>
+    <string name="screen_room_auto_delete_1m">"1分钟"</string>
+    <string name="screen_room_auto_delete_10m">"10分钟"</string>
+    <string name="screen_room_auto_delete_30m">"30分钟"</string>
+    <string name="screen_room_auto_delete_1h">"1小时"</string>
+    <string name="screen_room_auto_delete_1d">"1天"</string>
+    <string name="screen_room_auto_delete_1w">"1周"</string>
+    <string name="screen_room_auto_delete_1M">"1月"</string>
+    <string name="screen_room_auto_delete_3M">"3月"</string>
+    <string name="screen_room_auto_delete_6M">"6月"</string>
+    <string name="screen_room_auto_delete_1y">"1年"</string>
+</resources>

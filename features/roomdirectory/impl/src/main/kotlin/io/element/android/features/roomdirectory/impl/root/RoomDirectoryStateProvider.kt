@@ -19,11 +19,11 @@ open class RoomDirectoryStateProvider : PreviewParameterProvider<RoomDirectorySt
         get() = sequenceOf(
             aRoomDirectoryState(),
             aRoomDirectoryState(
-                query = "Element",
+                query = "WanChat",
                 roomDescriptions = aRoomDescriptionList(),
             ),
             aRoomDirectoryState(
-                query = "Element",
+                query = "WanChat",
                 roomDescriptions = aRoomDescriptionList(),
                 displayLoadMoreIndicator = true,
             ),

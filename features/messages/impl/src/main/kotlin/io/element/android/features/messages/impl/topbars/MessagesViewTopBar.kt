@@ -16,11 +16,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoDelete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -33,6 +36,7 @@ import io.element.android.features.messages.impl.timeline.components.CallMenuIte
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roomcall.api.aStandByCallState
 import io.element.android.features.roomcall.api.anOngoingCallState
+import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
@@ -43,9 +47,12 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
+import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState.AutoDeleteEnum
+import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState
 import io.element.android.libraries.matrix.ui.components.aMatrixUserList
 import io.element.android.libraries.matrix.ui.model.getAvatarData
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -66,6 +73,9 @@ internal fun MessagesViewTopBar(
     onJoinCallClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    autoDeleteState: AutoDeleteState,
+    onAutoDeleteClick: () -> Unit,
+    clearProgress: LongTaskManager.ClearTaskProgress?,
 ) {
     TopAppBar(
         modifier = modifier,
@@ -98,6 +108,7 @@ internal fun MessagesViewTopBar(
                             contentDescription = null,
                         )
                     }
+
                     IdentityState.VerificationViolation -> {
                         Icon(
                             imageVector = CompoundIcons.ErrorSolid(),
@@ -105,11 +116,37 @@ internal fun MessagesViewTopBar(
                             contentDescription = null,
                         )
                     }
+
                     else -> Unit
                 }
             }
         },
         actions = {
+            //这里添加各种按钮
+            //1.搜索按钮
+            IconButton(
+                onClick = {},
+            ) {
+                Icon(
+                    imageVector = CompoundIcons.Search(),
+                    contentDescription = null,
+                )
+            }
+            //2.阅后即焚
+            IconButton(
+                //即使阅后即焚功能正在运行，也应该允许点击。只要不是“清空房间”任务正在运行即可。
+                enabled = clearProgress == null || clearProgress.clearType == LongTaskManager.ClearType.DELETE,
+                onClick = onAutoDeleteClick,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AutoDelete,
+                    contentDescription = "阅后即焚",
+                    tint = if (autoDeleteState.autoDeleteEnum != AutoDeleteEnum.NONE)
+                        ElementTheme.colors.iconCriticalPrimary
+                    else
+                        Color.Black
+                )
+            }
             CallMenuItem(
                 roomCallState = roomCallState,
                 onJoinCallClick = onJoinCallClick,
@@ -178,6 +215,9 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
         onRoomDetailsClick = {},
         onJoinCallClick = {},
         onBackClick = {},
+        autoDeleteState = AutoDeleteState.defaultState,
+        onAutoDeleteClick = {},
+        clearProgress = LongTaskManager.ClearTaskProgress("roomId"),
     )
     Column {
         AMessagesViewTopBar()

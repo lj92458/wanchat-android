@@ -27,6 +27,7 @@ import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.TimelineException
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.api.timeline.item.event.InReplyTo
+import io.element.android.libraries.matrix.impl.exception.mapClientException
 import io.element.android.libraries.matrix.impl.media.MediaUploadHandlerImpl
 import io.element.android.libraries.matrix.impl.media.map
 import io.element.android.libraries.matrix.impl.poll.toInner
@@ -270,12 +271,23 @@ class RustTimeline(
     }
 
     override suspend fun redactEvent(eventOrTransactionId: EventOrTransactionId, reason: String?): Result<Unit> = withContext(dispatcher) {
-        runCatchingExceptions {
+        // 先用原来的 runCatchingExceptions 包住 inner.redactEvent
+        val raw = runCatchingExceptions {
             inner.redactEvent(
                 eventOrTransactionId = eventOrTransactionId.toRustEventOrTransactionId(),
                 reason = reason,
             )
         }
+
+        // 无论成功失败，都在这里把异常 map 到 ElementX 的 ClientException
+        raw.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { throwable ->
+                // 转换 Rust 异常成 ElementX 异常
+                val mapped = throwable.mapClientException()
+                Result.failure(mapped)
+            }
+        )
     }
 
     override suspend fun editMessage(

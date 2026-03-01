@@ -17,6 +17,7 @@ import io.element.android.features.userprofile.api.UserProfileState
 import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.features.userprofile.shared.aUserProfileState
 import io.element.android.libraries.architecture.AsyncData
+import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -145,6 +146,7 @@ fun aRoomDetailsState(
     canReportRoom = canReportRoom,
     isTombstoned = isTombstoned,
     showDebugInfo = showDebugInfo,
+    userEventPermissions = UserEventPermissions.DEFAULT,
     eventSink = eventSink,
 )
 

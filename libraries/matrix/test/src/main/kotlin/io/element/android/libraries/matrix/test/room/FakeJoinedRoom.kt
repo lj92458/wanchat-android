@@ -29,6 +29,7 @@ import io.element.android.libraries.matrix.api.room.powerlevels.RoomPowerLevelsV
 import io.element.android.libraries.matrix.api.room.powerlevels.UserRoleChange
 import io.element.android.libraries.matrix.api.roomdirectory.RoomVisibility
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.matrix.api.timeline.TimelineForDelete
 import io.element.android.libraries.matrix.api.widget.MatrixWidgetDriver
 import io.element.android.libraries.matrix.api.widget.MatrixWidgetSettings
 import io.element.android.libraries.matrix.test.notificationsettings.FakeNotificationSettingsService
@@ -80,7 +81,7 @@ class FakeJoinedRoom(
     private val removeRoomAliasFromRoomDirectoryResult: (RoomAlias) -> Result<Boolean> = { lambdaError() },
     private val enableEncryptionResult: () -> Result<Unit> = { lambdaError() },
     private val updateJoinRuleResult: (JoinRule) -> Result<Unit> = { lambdaError() },
-    private val setSendQueueEnabledResult: (Boolean) -> Unit = { _: Boolean -> },
+    private val setSendQueueEnabledResult: (Boolean) -> Unit = { _: Boolean -> }, override var longTaskCount: Int, override var roomExited: Boolean, override val timelineForDelete: TimelineForDelete,
 ) : JoinedRoom, BaseRoom by baseRoom {
     fun givenRoomMembersState(state: RoomMembersState) {
         baseRoom.givenRoomMembersState(state)
@@ -88,6 +89,14 @@ class FakeJoinedRoom(
 
     fun givenRoomInfo(roomInfo: RoomInfo) {
         baseRoom.givenRoomInfo(roomInfo)
+    }
+
+    override suspend fun redact(eventId: String, reason: String?): Result<Unit> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun sendStateEventRaw(eventType: String, stateKey: String, content: String): Result<String> {
+        TODO("Not yet implemented")
     }
 
     override suspend fun createTimeline(createTimelineParams: CreateTimelineParams): Result<Timeline> = simulateLongTask {
@@ -216,6 +225,10 @@ class FakeJoinedRoom(
 
     override suspend fun withdrawVerificationAndResend(userIds: List<UserId>, sendHandle: SendHandle): Result<Unit> = simulateLongTask {
         withdrawVerificationAndResendResult(userIds, sendHandle)
+    }
+
+    override fun decrementTasks() {
+        TODO("Not yet implemented")
     }
 
     private suspend fun simulateSendMediaProgress(progressCallback: ProgressCallback?) {

@@ -64,8 +64,8 @@ fun aTimelineState(
     }
     return TimelineState(
         timelineItems = timelineItems,
-        timelineMode = timelineMode,
         timelineRoomInfo = timelineRoomInfo,
+        timelineMode = timelineMode,
         renderReadReceipts = renderReadReceipts,
         newEventState = NewEventState.None,
         isLive = isLive,

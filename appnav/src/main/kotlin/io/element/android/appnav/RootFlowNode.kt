@@ -26,8 +26,12 @@ import com.bumble.appyx.navmodel.backstack.transitionhandler.rememberBackstackSl
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metro.Inject
 import im.vector.app.features.analytics.plan.JoinedRoom
 import io.element.android.annotations.ContributesNode
+import io.element.android.appnav.LoggedInAppScopeFlowNode.*
+import io.element.android.appnav.NotLoggedInFlowNode.*
+import io.element.android.appnav.RootFlowNode.NavTarget.*
 import io.element.android.appnav.di.MatrixSessionCache
 import io.element.android.appnav.intent.IntentResolver
 import io.element.android.appnav.intent.ResolvedIntent
@@ -40,6 +44,7 @@ import io.element.android.features.login.api.LoginParams
 import io.element.android.features.login.api.accesscontrol.AccountProviderAccessControl
 import io.element.android.features.rageshake.api.bugreport.BugReportEntryPoint
 import io.element.android.features.signedout.api.SignedOutEntryPoint
+import io.element.android.features.signedout.api.SignedOutEntryPoint.*
 import io.element.android.libraries.accountselect.api.AccountSelectEntryPoint
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
@@ -225,14 +230,14 @@ class RootFlowNode(
                     ?: return emptyNode(buildContext).also {
                         Timber.w("Couldn't find any session, go through SplashScreen")
                     }
-                val inputs = LoggedInAppScopeFlowNode.Inputs(matrixClient)
+                val inputs = Inputs(matrixClient)
                 val callback = object : LoggedInAppScopeFlowNode.Callback {
                     override fun navigateToBugReport() {
                         backstack.push(NavTarget.BugReport)
                     }
 
                     override fun navigateToAddAccount() {
-                        backstack.push(NavTarget.NotLoggedInFlow(null))
+                        backstack.push(NotLoggedInFlow(null))
                     }
                 }
                 createNode<LoggedInAppScopeFlowNode>(buildContext, plugins = listOf(inputs, callback))

@@ -13,6 +13,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -23,12 +24,17 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.features.messages.impl.MessagesNavigator
-import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureEvents
+import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureEvents.ComputeForMessage
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureState
+import io.element.android.features.messages.impl.timeline.FocusRequestState.Requested
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactory
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactoryConfig
 import io.element.android.features.messages.impl.timeline.model.NewEventState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
+import io.element.android.features.messages.impl.timeline.model.event.isRedacted
+import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemDaySeparatorModel
+import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemLoadingIndicatorModel
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemTypingNotificationModel
 import io.element.android.features.messages.impl.typing.TypingNotificationState
 import io.element.android.features.messages.impl.voicemessages.timeline.RedactedVoiceMessageManager
@@ -56,12 +62,15 @@ import io.element.android.libraries.matrix.ui.room.canSendMessageAsState
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -86,7 +95,14 @@ class TimelinePresenter(
     private val roomCallStatePresenter: Presenter<RoomCallState>,
     private val featureFlagService: FeatureFlagService,
 ) : Presenter<TimelineState> {
+    data class VisibleSignature(
+        val firstEventId: String?,
+        val lastEventId: String?,
+        val visibleEventCount: Int = 0
+    )
+
     private val tag = "TimelinePresenter"
+
     @AssistedFactory
     interface Factory {
         fun create(
@@ -139,7 +155,12 @@ class TimelinePresenter(
         val displayThreadSummaries by produceState(false) {
             value = featureFlagService.isFeatureEnabled(FeatureFlags.Threads)
         }
-
+        var canPaginate by remember { mutableStateOf(true) }
+        var useCanPaginate by remember { mutableStateOf(true) }
+        var lastVisibleSignature by remember { mutableStateOf<VisibleSignature?>(null) }
+        var consecutiveEmptyPages by remember { mutableIntStateOf(0) }
+        var pendingPaginationAttempt by remember { mutableStateOf(false) }
+        val loadMoreMutex = remember { Mutex() }
         fun handleEvents(event: TimelineEvents) {
             when (event) {
                 is TimelineEvents.LoadMore -> {
@@ -148,9 +169,31 @@ class TimelinePresenter(
                         return
                     }
                     localScope.launch {
+                        useCanPaginate = false
+                        pendingPaginationAttempt = true
                         timelineController.paginate(direction = event.direction)
                     }
                 }
+
+                is TimelineEvents.LoadMoreByLoadingIndicator -> {
+                    if (event.direction == Timeline.PaginationDirection.FORWARDS && timelineMode is Timeline.Mode.Thread) {
+                        // Do not paginate forwards in thread mode, as it's not supported
+                        return
+                    }
+                    localScope.launch {
+                        loadMoreMutex.withLock {
+                            if (canPaginate) {
+                                useCanPaginate = true
+                                pendingPaginationAttempt = true
+                                timelineController.paginate(direction = event.direction)
+                                Timber.d("TimelineEvents.LoadMore: paginate")
+                            } else {
+                                Timber.d("TimelineEvents.LoadMore: cannot paginate")
+                            }
+                        }
+                    }
+                }
+
                 is TimelineEvents.OnScrollFinished -> {
                     if (isLive) {
                         if (event.firstIndex == 0) {
@@ -167,6 +210,7 @@ class TimelinePresenter(
                         newEventState.value = NewEventState.None
                     }
                 }
+
                 is TimelineEvents.SelectPollAnswer -> sessionCoroutineScope.launch {
                     timelineController.invokeOnCurrentTimeline {
                         sendPollResponseAction.execute(
@@ -176,6 +220,7 @@ class TimelinePresenter(
                         )
                     }
                 }
+
                 is TimelineEvents.EndPoll -> sessionCoroutineScope.launch {
                     timelineController.invokeOnCurrentTimeline {
                         endPollAction.execute(
@@ -184,34 +229,42 @@ class TimelinePresenter(
                         )
                     }
                 }
+
                 is TimelineEvents.EditPoll -> {
                     navigator.navigateToEditPoll(event.pollStartId)
                 }
+
                 is TimelineEvents.FocusOnEvent -> sessionCoroutineScope.launch {
-                    focusRequestState.value = FocusRequestState.Requested(event.eventId, event.debounce)
+                    focusRequestState.value = Requested(event.eventId, event.debounce)
                     delay(event.debounce)
                     Timber.tag(tag).d("Started focus on ${event.eventId}")
                     focusOnEvent(event.eventId, focusRequestState)
                 }.start()
+
                 is TimelineEvents.OnFocusEventRender -> {
                     focusRequestState.value = focusRequestState.value.onFocusEventRender()
                 }
+
                 is TimelineEvents.ClearFocusRequestState -> {
                     focusRequestState.value = FocusRequestState.None
                 }
+
                 is TimelineEvents.JumpToLive -> {
                     timelineController.focusOnLive()
                 }
+
                 TimelineEvents.HideShieldDialog -> messageShield.value = null
                 is TimelineEvents.ShowShieldDialog -> messageShield.value = event.messageShield
                 is TimelineEvents.ComputeVerifiedUserSendFailure -> {
-                    resolveVerifiedUserSendFailureState.eventSink(ResolveVerifiedUserSendFailureEvents.ComputeForMessage(event.event))
+                    resolveVerifiedUserSendFailureState.eventSink(ComputeForMessage(event.event))
                 }
+
                 is TimelineEvents.NavigateToPredecessorOrSuccessorRoom -> {
                     // Navigate to the predecessor or successor room
                     val serverNames = calculateServerNamesForRoom(room)
                     navigator.navigateToRoom(event.roomId, null, serverNames)
                 }
+
                 is TimelineEvents.OpenThread -> {
                     navigator.navigateToThread(
                         threadRootId = event.threadRootEventId,
@@ -221,11 +274,122 @@ class TimelinePresenter(
             }
         }
 
+        fun buildVisibleSignature(
+            visibleItems: List<TimelineItem>
+        ): VisibleSignature? {
+            val visibleEvents = visibleItems.filter {
+                it is TimelineItem.Event || it is TimelineItem.GroupedEvents
+            }
+            if (visibleEvents.isEmpty()) {
+                return null
+            }
+            val firstEventId = visibleEvents
+                .filterIsInstance<TimelineItem.Event>()
+                .firstOrNull()
+                ?.eventId
+            val lastEventId = visibleEvents
+                .filterIsInstance<TimelineItem.Event>()
+                .lastOrNull()
+                ?.eventId
+            return VisibleSignature(
+                firstEventId = firstEventId.toString(),
+                lastEventId = lastEventId.toString(),
+                visibleEventCount = visibleEvents.size
+            )
+        }
+
+        fun updatePaginationGate(visibleItems: List<TimelineItem>) {
+            // 不是分页导致的刷新，直接忽略
+            if (!pendingPaginationAttempt) {
+                return
+            }
+            val currentSignature = buildVisibleSignature(visibleItems)
+                ?: return // 没有任何可见内容，继续等待真正的结果
+            // 到这里，说明“一次分页”的第一个有效结果已到达
+            pendingPaginationAttempt = false
+            if (currentSignature == lastVisibleSignature) {
+                consecutiveEmptyPages++
+            } else {
+                consecutiveEmptyPages = 0
+                lastVisibleSignature = currentSignature
+                canPaginate = true
+            }
+            if (consecutiveEmptyPages >= 2) {
+                canPaginate = false
+            }
+            Timber.d(
+                "PaginationGate | emptyPages=%d canPaginate=%s signature=%s",
+                consecutiveEmptyPages,
+                canPaginate,
+                currentSignature
+            )
+        }
+
+        /**
+         * 过滤掉一些item。 items是按时间降序排列的。
+         * 不用占位符，而是直接过滤。当连续三页都需要隐藏，就禁止自动拉取；当屏幕滑动导致新的页中有日期需要显示，再允许自动拉取。
+         * */
+        fun filterSomeItems(
+            timelineItems: ImmutableList<TimelineItem>
+        ): ImmutableList<TimelineItem> {
+            val result = mutableListOf<TimelineItem>()
+            var hasVisibleEventInCurrentDay = false
+
+            //"Custom event" 字符串来自 StateContentFormatter
+            fun needShowItem(item: TimelineItem.Event): Boolean =
+                !item.content.isRedacted() &&
+                    (item.content !is TimelineItemStateContent ||
+                        !item.content.body.startsWith("Custom event"))
+            for (item in timelineItems) {
+                when (item) {
+                    is TimelineItem.Event -> {
+                        if (needShowItem(item)) {
+                            hasVisibleEventInCurrentDay = true
+                            result += item
+                        }
+                    }
+
+                    is TimelineItem.GroupedEvents -> {
+                        if (item.events.any { needShowItem(it) }) {
+                            hasVisibleEventInCurrentDay = true
+                            result += item
+                        }
+                    }
+
+                    is TimelineItem.Virtual -> {
+                        when (item.model) {
+                            is TimelineItemDaySeparatorModel -> {
+                                // 只有当前日期下存在可见事件，才显示 DaySeparator
+                                if (hasVisibleEventInCurrentDay) {
+                                    result += item
+                                }
+                                hasVisibleEventInCurrentDay = false
+                            }
+
+                            is TimelineItemLoadingIndicatorModel -> {
+                                // LoadingIndicator 是否展示，只由 canPaginate 决定。前提是在启用canPaginate的状态下(为了排除屏幕滑动)
+                                if (!useCanPaginate || canPaginate) {
+                                    result += item
+                                }
+                            }
+
+                            else -> {
+                                result += item
+                            }
+                        }
+                    }
+                }
+            }
+            updatePaginationGate(result)
+            return result.toImmutableList()
+        }
+
+
         LaunchedEffect(Unit) {
             timelineItemsFactory.timelineItems
                 .onEach { newTimelineItems ->
                     timelineItemIndexer.process(newTimelineItems)
-                    timelineItems = newTimelineItems
+                    timelineItems = filterSomeItems(newTimelineItems)
                 }
                 .launchIn(this)
 
@@ -323,6 +487,7 @@ class TimelinePresenter(
                         is EventFocusResult.FocusedOnLive -> {
                             focusRequestState.value = FocusRequestState.Success(eventId = eventId)
                         }
+
                         is EventFocusResult.IsInThread -> {
                             val currentThreadId = (timelineController.mainTimelineMode() as? Timeline.Mode.Thread)?.threadRootId
                             if (currentThreadId == result.threadId) {

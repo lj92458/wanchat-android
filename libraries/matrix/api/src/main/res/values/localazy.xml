@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_room_auto_delete_none">"disabled"</string>
+    <string name="screen_room_auto_delete_30s">"30 seconds"</string>
+    <string name="screen_room_auto_delete_1m">"1 minute"</string>
+    <string name="screen_room_auto_delete_10m">"10 minutes"</string>
+    <string name="screen_room_auto_delete_30m">"30 minutes"</string>
+    <string name="screen_room_auto_delete_1h">"1 hour"</string>
+    <string name="screen_room_auto_delete_1d">"1 day"</string>
+    <string name="screen_room_auto_delete_1w">"1 week"</string>
+    <string name="screen_room_auto_delete_1M">"1 month"</string>
+    <string name="screen_room_auto_delete_3M">"3 months"</string>
+    <string name="screen_room_auto_delete_6M">"6 months"</string>
+    <string name="screen_room_auto_delete_1y">"1 year"</string>
+</resources>

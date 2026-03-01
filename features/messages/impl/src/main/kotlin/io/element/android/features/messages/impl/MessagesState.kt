@@ -7,6 +7,7 @@
 
 package io.element.android.features.messages.impl
 
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
@@ -17,14 +18,17 @@ import io.element.android.features.messages.impl.timeline.TimelineState
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionState
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryState
 import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheetState
+import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
 import io.element.android.libraries.architecture.AsyncData
+import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
+import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import kotlinx.collections.immutable.ImmutableList
 
@@ -54,6 +58,11 @@ data class MessagesState(
     val dmUserVerificationState: IdentityState?,
     val roomMemberModerationState: RoomMemberModerationState,
     val successorRoom: SuccessorRoom?,
+    val selectedEvents: SnapshotStateMap<TimelineItem.Event, Boolean>,
+    val isMultiSelect: Boolean, //用户开启多选模式时，点击的是哪条消息
+    val autoDeleteState: AutoDeleteState, //是否开启自动删除
+    val clearProgressIsRunning: Boolean = false,
+    val clearProgress: LongTaskManager.ClearTaskProgress?,
     val eventSink: (MessagesEvents) -> Unit
 ) {
     val isTombstoned = successorRoom != null

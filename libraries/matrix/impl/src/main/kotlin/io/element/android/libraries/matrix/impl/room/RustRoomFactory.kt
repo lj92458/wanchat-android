@@ -9,6 +9,7 @@ package io.element.android.libraries.matrix.impl.room
 
 import io.element.android.appconfig.TimelineConfig
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.core.DeviceId
@@ -18,8 +19,10 @@ import io.element.android.libraries.matrix.api.notificationsettings.Notification
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomMembershipObserver
+import io.element.android.libraries.matrix.api.room.custominfo.RoomCustomInfo
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
 import io.element.android.libraries.matrix.api.roomlist.awaitLoaded
+import io.element.android.libraries.matrix.impl.exception.mapClientException
 import io.element.android.libraries.matrix.impl.room.preview.RoomPreviewInfoMapper
 import io.element.android.libraries.matrix.impl.roomlist.roomOrNull
 import io.element.android.services.toolbox.api.systemclock.SystemClock
@@ -28,6 +31,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import org.matrix.rustcomponents.sdk.DateDividerMode
 import org.matrix.rustcomponents.sdk.Membership
 import org.matrix.rustcomponents.sdk.Room
@@ -80,11 +85,11 @@ class RustRoomFactory(
                 return@withContext null
             }
             val room = awaitRoomInRoomList(roomId) ?: return@withContext null
-            getBaseRoom(room)
+            getBaseRoom(room, initRoomCustomInfo(room))
         }
     }
 
-    private suspend fun getBaseRoom(sdkRoom: Room): RustBaseRoom {
+    private suspend fun getBaseRoom(sdkRoom: Room, roomCustomInfo: RoomCustomInfo): RustBaseRoom {
         val initialRoomInfo = sdkRoom.roomInfo()
         return RustBaseRoom(
             sessionId = sessionId,
@@ -95,6 +100,7 @@ class RustRoomFactory(
             roomMembershipObserver = roomMembershipObserver,
             roomInfoMapper = roomInfoMapper,
             initialRoomInfo = roomInfoMapper.map(initialRoomInfo),
+            initialRoomCustomInfo = roomCustomInfo,
             sessionCoroutineScope = sessionCoroutineScope,
         )
     }
@@ -123,7 +129,7 @@ class RustRoomFactory(
 
                 GetRoomResult.Joined(
                     JoinedRustRoom(
-                        baseRoom = getBaseRoom(sdkRoom),
+                        baseRoom = getBaseRoom(sdkRoom, initRoomCustomInfo(sdkRoom)),
                         notificationSettingsService = notificationSettingsService,
                         roomContentForwarder = roomContentForwarder,
                         liveInnerTimeline = timeline,
@@ -143,7 +149,7 @@ class RustRoomFactory(
                 GetRoomResult.NotJoined(
                     NotJoinedRustRoom(
                         sessionId = sessionId,
-                        localRoom = getBaseRoom(sdkRoom),
+                        localRoom = getBaseRoom(sdkRoom, initRoomCustomInfo(sdkRoom)),
                         previewInfo = RoomPreviewInfoMapper.map(preview.info()),
                     )
                 )
@@ -168,6 +174,35 @@ class RustRoomFactory(
         }
 
         return sdkRoom
+    }
+
+    private suspend fun initRoomCustomInfo(room: Room): RoomCustomInfo {
+        val info = RoomCustomInfo(room.id())
+        return runCatchingExceptions {
+            room.getCustomState(room.id(), info.eventTypes)
+        }.fold(
+            onSuccess = { jsonArrStr ->
+                val jsonArray = Json.parseToJsonElement(jsonArrStr).jsonArray
+                info.updateOrUpload(jsonArray) { state ->
+                    try {
+                        val eventId = room.sendStateEventRaw(
+                            eventType = state.eventType,
+                            stateKey = state.stateKey,
+                            content = state.getContent()
+                        )
+                        Timber.d("sendStateEventRaw $eventId for ${room.id()}")
+                    } catch (e: Exception) {
+                        Timber.e(e, "sendStateEventRaw Failed,roomId= ${room.id()}")
+                        info
+                    }
+
+                }
+            },
+            onFailure = { e ->
+                Timber.e(e, "Failed to get room custom info for ${room.id()}")
+                info
+            }
+        )
     }
 }
 

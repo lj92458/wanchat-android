@@ -110,11 +110,11 @@ class LoginFlowNode(
         @Parcelize
         data object ChooseAccountProvider : NavTarget
 
-        @Parcelize
-        data object ChangeAccountProvider : NavTarget
+//        @Parcelize
+//        data object ChangeAccountProvider : NavTarget
 
         @Parcelize
-        data object SearchAccountProvider : NavTarget
+        data class SearchAccountProvider(val isAccountCreation: Boolean) : NavTarget
 
         @Parcelize
         data object LoginPassword : NavTarget
@@ -129,7 +129,8 @@ class LoginFlowNode(
                 val callback = object : OnBoardingNode.Callback {
                     override fun navigateToSignUpFlow() {
                         backstack.push(
-                            NavTarget.ConfirmAccountProvider(isAccountCreation = true)
+                            //NavTarget.ConfirmAccountProvider(isAccountCreation = true)
+                            NavTarget.SearchAccountProvider(isAccountCreation = true)
                         )
                     }
 
@@ -138,7 +139,9 @@ class LoginFlowNode(
                             if (mustChooseAccountProvider) {
                                 NavTarget.ChooseAccountProvider
                             } else {
-                                NavTarget.ConfirmAccountProvider(isAccountCreation = false)
+                                // lj:跳过“选择服务器”，直接搜索服务器
+                                //NavTarget.ConfirmAccountProvider(isAccountCreation = false)
+                                NavTarget.SearchAccountProvider(isAccountCreation = false)
                             }
                         )
                     }
@@ -207,11 +210,13 @@ class LoginFlowNode(
                     }
 
                     override fun navigateToChangeAccountProvider() {
-                        backstack.push(NavTarget.ChangeAccountProvider)
+                        //backstack.push(NavTarget.ChangeAccountProvider)
+                        backstack.push(NavTarget.SearchAccountProvider(isAccountCreation = navTarget.isAccountCreation))
                     }
                 }
                 createNode<ConfirmAccountProviderNode>(buildContext, plugins = listOf(inputs, callback))
             }
+            /*
             NavTarget.ChangeAccountProvider -> {
                 val callback = object : ChangeAccountProviderNode.Callback {
                     override fun onDone() {
@@ -228,15 +233,17 @@ class LoginFlowNode(
                 }
 
                 createNode<ChangeAccountProviderNode>(buildContext, plugins = listOf(callback))
-            }
-            NavTarget.SearchAccountProvider -> {
+            } */
+            is NavTarget.SearchAccountProvider -> {
                 val callback = object : SearchAccountProviderNode.Callback {
                     override fun onDone() {
                         // Go back to the Account Provider screen
+                        /*
                         val confirmAccountProvider = backstack.elements.value.firstOrNull {
                             it.key.navTarget is NavTarget.ConfirmAccountProvider
                         }?.key?.navTarget ?: NavTarget.ConfirmAccountProvider(isAccountCreation = false)
-                        backstack.singleTop(confirmAccountProvider)
+                        backstack.singleTop(confirmAccountProvider) */
+                        backstack.singleTop(NavTarget.ConfirmAccountProvider(navTarget.isAccountCreation))
                     }
                 }
 

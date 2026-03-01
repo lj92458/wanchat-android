@@ -15,6 +15,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -49,6 +50,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
+import io.element.android.features.messages.impl.timeline.model.event.isRedacted
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.messages.impl.voicemessages.composer.DefaultVoiceMessageComposerPresenter
 import io.element.android.features.roomcall.api.RoomCallState
@@ -61,6 +63,7 @@ import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.extensions.flatMap
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.meta.BuildMeta
+import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
@@ -74,9 +77,15 @@ import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import io.element.android.libraries.matrix.api.room.MAX_DELAY_TIME
 import io.element.android.libraries.matrix.api.room.MessageEventType
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMembersState
+import io.element.android.libraries.matrix.api.room.RoomRuntimeRegistry
+import io.element.android.libraries.matrix.api.room.UserInfo
+import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState
+import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState.AutoDeleteEnum
+import io.element.android.libraries.matrix.api.room.deleteSmartly
 import io.element.android.libraries.matrix.api.room.isDm
 import io.element.android.libraries.matrix.api.room.powerlevels.canPinUnpin
 import io.element.android.libraries.matrix.api.room.powerlevels.canRedactOther
@@ -92,6 +101,8 @@ import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -151,6 +162,7 @@ class MessagesPresenter(
 
         val coroutineScope = rememberCoroutineScope()
         val roomInfo by room.roomInfoFlow.collectAsState()
+        val roomCustomInfo by room.roomCustomInfoFlow.collectAsState()
         val localCoroutineScope = rememberCoroutineScope()
         val composerState = composerPresenter.present()
         val voiceMessageComposerState = voiceMessageComposerPresenter.present()
@@ -207,6 +219,60 @@ class MessagesPresenter(
         val membersState by room.membersStateFlow.collectAsState()
         val dmRoomMember by room.getDirectRoomMember(membersState)
         val roomMemberIdentityStateChanges = identityChangeState.roomMemberIdentityStateChanges
+        // 多选，不一定是为了删除，而是能干很多事情。
+        val selectedEvents = remember { mutableStateMapOf<TimelineItem.Event, Boolean>() }
+        var isMultiSelect by remember { mutableStateOf(false) } //用户开启多选模式时，点击的是哪条消息
+        //自定义状态。这里最好把room作为key，防止它变化
+        val autoDeleteState by remember(roomCustomInfo) { derivedStateOf { roomCustomInfo.getState<AutoDeleteState>() } }
+        val clearProgress by LongTaskManager.progress.map { it[room.roomId.value] }.collectAsState(initial = null)
+        //阅后即焚，或清空房间。两种任务共用状态
+        val clearProgressIsRunning by remember(clearProgress) { derivedStateOf { clearProgress?.isRunning ?: false } }
+
+        /**
+         * 定时删除、阅后即焚。本函数具有幂等性。可反复调用。
+         * do while循环，可以看成永不关闭的，那么room就永不销毁。用户每次回到home页再进入房间，就会创建新的room，但没关系：这种新建的room调用autoDelete时，
+         * 发现clearProgressIsRunning==true，于是不会执行incrementTasks函数，也不会启动新的do-while循环，那么这种room在退出时就会销毁。等于每个房间只有一个room在长期运行。
+         * 这问题不大，内存不会爆。但是我可以改进：给while循环增加条件，当delayList协程都执行完毕，就退出while。具体来说，就是把launch记录到RoomRuntimeState对象中。
+         * 问题是：销毁room，虽然能减轻内存消耗，但是让“定时删除”打折扣：如果用户连续几天不进入某房间，该房间的定时删除就失效了，直到用户再次进入房间。不过这是大多数聊天工具的策略。
+         */
+        fun autoDelete() {
+            if (!clearProgressIsRunning && autoDeleteState.autoDeleteEnum != AutoDeleteEnum.NONE) {
+                LongTaskManager.runTask(
+                    before = { room.incrementTasks() },
+                    task = {
+                        val beginTime = System.currentTimeMillis()
+                        val roomRuntimeState = RoomRuntimeRegistry.get(room.roomId.value)
+                        if (roomRuntimeState.members.isEmpty()) {
+                            roomRuntimeState.members = room.getMembers().getOrElse { emptyList() }
+                            roomRuntimeState.members.forEach {
+                                roomRuntimeState.userInfoMap.putIfAbsent(it.userId, UserInfo())
+                            }
+                        }
+                        val willDeleteNum = room.deleteSmartly(room.customInfo().getState<AutoDeleteState>().stopTime, roomRuntimeState)
+                        if (willDeleteNum > 0) {
+                            roomRuntimeState.job?.join()
+                        }
+                        delay(MAX_DELAY_TIME - (System.currentTimeMillis() - beginTime))
+                    },
+                    after = { room.completeLongTask() },
+                    roomId = room.roomId.value,
+                    clearType = LongTaskManager.ClearType.DELETE
+                )
+            }
+        }
+        LaunchedEffect(autoDeleteState) {
+            if (autoDeleteState.autoDeleteEnum == AutoDeleteEnum.NONE) {
+                LongTaskManager.update(room.roomId.value) { it.copy(isRunning = false) }
+            } else {
+                autoDelete()
+            }
+        }
+
+        LaunchedEffect(Unit) {
+            room.timelineForDelete.timelineItems.collect { list ->
+                autoDelete()
+            }
+        }
 
         LifecycleResumeEffect(dmRoomMember, roomInfo.isEncrypted) {
             if (roomInfo.isEncrypted == true) {
@@ -219,6 +285,103 @@ class MessagesPresenter(
                 }
             }
             onPauseOrDispose {}
+        }
+        // multi select  多选，不一定是为了删除，而是能干很多事情。 ==============================
+        fun toggleMultiSelectMode() {
+            isMultiSelect = !isMultiSelect
+            if (!isMultiSelect) { //退出多选模式，立刻清空集合
+                selectedEvents.clear()
+            }
+        }
+
+        fun toggleItemSelection(event: TimelineItem.Event) {
+            if (selectedEvents.contains(event)) selectedEvents.remove(event)
+            else selectedEvents[event] = true
+        }
+
+        //响应点击事件，自动把当前消息加入列表
+        fun handleMultiSelectAction(event: TimelineItem.Event) {
+            if (event.eventId != null) {
+                toggleMultiSelectMode()
+                toggleItemSelection(event)
+            }
+        }
+
+        fun CoroutineScope.multiDelete() = launch {
+            selectedEvents.forEach { (event, isSelected) ->
+                if (isSelected && !event.content.isRedacted()) {
+                    if (event.isMine && userEventPermissions.canRedactOwn
+                        || !event.isMine && userEventPermissions.canRedactOther) {
+                        handleActionRedact(event)
+                    }
+                }
+            }
+            toggleMultiSelectMode()
+        }
+
+        // end multi select ===========================================================================
+        /**
+         * 把自动删除相关的配置，保存到服务器数据库中
+         */
+        fun CoroutineScope.autoDeleteStateChange(autoDeleteEnum: AutoDeleteEnum) = launch {
+            val state = autoDeleteState
+            state.autoDeleteEnum = autoDeleteEnum
+            val result = room.sendStateEventRaw(
+                eventType = state.eventType,
+                stateKey = state.stateKey,
+                content = state.getContent()
+            )
+            if (result.isSuccess) {
+                Timber.d("autoDeleteStateChange success: eventId = ${result.getOrNull()}")
+            } else {
+                Timber.w("autoDeleteStateChange error: ${result.exceptionOrNull()}")
+            }
+
+        }
+
+        fun CoroutineScope.handleTimelineAction(
+            action: TimelineItemAction,
+            targetEvent: TimelineItem.Event,
+            composerState: MessageComposerState,
+            timelineProtectionState: TimelineProtectionState,
+            enableTextFormatting: Boolean,
+            timelineState: TimelineState,
+        ) = launch {
+            when (action) {
+                TimelineItemAction.CopyText -> handleCopyContents(targetEvent)
+                TimelineItemAction.CopyCaption -> handleCopyCaption(targetEvent)
+                TimelineItemAction.CopyLink -> handleCopyLink(targetEvent)
+                TimelineItemAction.Redact -> handleActionRedact(targetEvent)
+                TimelineItemAction.Edit,
+                TimelineItemAction.EditPoll -> handleActionEdit(targetEvent, composerState, enableTextFormatting)
+
+                TimelineItemAction.AddCaption -> handleActionAddCaption(targetEvent, composerState)
+                TimelineItemAction.EditCaption -> handleActionEditCaption(targetEvent, composerState)
+                TimelineItemAction.RemoveCaption -> handleRemoveCaption(targetEvent)
+                TimelineItemAction.Reply -> handleActionReply(targetEvent, composerState, timelineProtectionState)
+                TimelineItemAction.ReplyInThread -> {
+                    val displayThreads = featureFlagService.isFeatureEnabled(FeatureFlags.Threads)
+                    if (displayThreads) {
+                        // Get either the thread id this event is in, or the event id if it's not in a thread so we can start one
+                        val threadId = when (targetEvent.threadInfo) {
+                            is TimelineItemThreadInfo.ThreadResponse -> targetEvent.threadInfo.threadRootId
+                            is TimelineItemThreadInfo.ThreadRoot, null -> targetEvent.eventId?.toThreadId()
+                        } ?: return@launch
+                        navigator.navigateToThread(threadId, null)
+                    } else {
+                        handleActionReply(targetEvent, composerState, timelineProtectionState)
+                    }
+                }
+
+                TimelineItemAction.ViewSource -> handleShowDebugInfoAction(targetEvent)
+                TimelineItemAction.Forward -> handleForwardAction(targetEvent)
+                TimelineItemAction.ReportContent -> handleReportAction(targetEvent)
+                TimelineItemAction.EndPoll -> handleEndPollAction(targetEvent, timelineState)
+                TimelineItemAction.Pin -> handlePinAction(targetEvent)
+                TimelineItemAction.Unpin -> handleUnpinAction(targetEvent)
+                TimelineItemAction.ViewInTimeline -> Unit
+                TimelineItemAction.MultiSelect -> handleMultiSelectAction(targetEvent)
+            }
         }
 
         fun handleEvents(event: MessagesEvents) {
@@ -233,9 +396,11 @@ class MessagesPresenter(
                         timelineProtectionState = timelineProtectionState,
                     )
                 }
+
                 is MessagesEvents.ToggleReaction -> {
                     localCoroutineScope.toggleReaction(event.emoji, event.eventOrTransactionId)
                 }
+
                 is MessagesEvents.InviteDialogDismissed -> {
                     hasDismissedInviteDialog = true
 
@@ -243,10 +408,12 @@ class MessagesPresenter(
                         localCoroutineScope.reinviteOtherUser(inviteProgress)
                     }
                 }
+
                 is MessagesEvents.Dismiss -> actionListState.eventSink(ActionListEvents.Clear)
                 is MessagesEvents.OnUserClicked -> {
                     roomMemberModerationState.eventSink(RoomMemberModerationEvents.ShowActionsForUser(event.user))
                 }
+
                 is MessagesEvents.MarkAsFullyReadAndExit -> coroutineScope.launch {
                     if (!markingAsReadAndExiting.getAndSet(true)) {
                         val latestEventId = room.liveTimeline.getLatestEventId().getOrElse {
@@ -263,6 +430,11 @@ class MessagesPresenter(
                         markingAsReadAndExiting.set(false)
                     }
                 }
+
+                is MessagesEvents.ToggleMultiSelectMode -> toggleMultiSelectMode()
+                is MessagesEvents.ToggleEventSelection -> toggleItemSelection(event.event)
+                MessagesEvents.MultiDelete -> localCoroutineScope.multiDelete()
+                is MessagesEvents.AutoDeleteStateChange -> localCoroutineScope.autoDeleteStateChange(event.autoDeleteEnum)
             }
         }
 
@@ -291,7 +463,12 @@ class MessagesPresenter(
             pinnedMessagesBannerState = pinnedMessagesBannerState,
             dmUserVerificationState = dmUserVerificationState,
             roomMemberModerationState = roomMemberModerationState,
-            successorRoom = roomInfo.successorRoom
+            successorRoom = roomInfo.successorRoom,
+            selectedEvents = selectedEvents,
+            isMultiSelect = isMultiSelect,
+            autoDeleteState = autoDeleteState,
+            clearProgressIsRunning = clearProgressIsRunning,
+            clearProgress = clearProgress
         ) { handleEvents(it) }
     }
 
@@ -325,48 +502,6 @@ class MessagesPresenter(
     private fun RoomInfo.heroes(): List<AvatarData> {
         return heroes.map { user ->
             user.getAvatarData(size = AvatarSize.TimelineRoom)
-        }
-    }
-
-    private fun CoroutineScope.handleTimelineAction(
-        action: TimelineItemAction,
-        targetEvent: TimelineItem.Event,
-        composerState: MessageComposerState,
-        timelineProtectionState: TimelineProtectionState,
-        enableTextFormatting: Boolean,
-        timelineState: TimelineState,
-    ) = launch {
-        when (action) {
-            TimelineItemAction.CopyText -> handleCopyContents(targetEvent)
-            TimelineItemAction.CopyCaption -> handleCopyCaption(targetEvent)
-            TimelineItemAction.CopyLink -> handleCopyLink(targetEvent)
-            TimelineItemAction.Redact -> handleActionRedact(targetEvent)
-            TimelineItemAction.Edit,
-            TimelineItemAction.EditPoll -> handleActionEdit(targetEvent, composerState, enableTextFormatting)
-            TimelineItemAction.AddCaption -> handleActionAddCaption(targetEvent, composerState)
-            TimelineItemAction.EditCaption -> handleActionEditCaption(targetEvent, composerState)
-            TimelineItemAction.RemoveCaption -> handleRemoveCaption(targetEvent)
-            TimelineItemAction.Reply -> handleActionReply(targetEvent, composerState, timelineProtectionState)
-            TimelineItemAction.ReplyInThread -> {
-                val displayThreads = featureFlagService.isFeatureEnabled(FeatureFlags.Threads)
-                if (displayThreads) {
-                    // Get either the thread id this event is in, or the event id if it's not in a thread so we can start one
-                    val threadId = when (targetEvent.threadInfo) {
-                        is TimelineItemThreadInfo.ThreadResponse -> targetEvent.threadInfo.threadRootId
-                        is TimelineItemThreadInfo.ThreadRoot, null -> targetEvent.eventId?.toThreadId()
-                    } ?: return@launch
-                    navigator.navigateToThread(threadId, null)
-                } else {
-                    handleActionReply(targetEvent, composerState, timelineProtectionState)
-                }
-            }
-            TimelineItemAction.ViewSource -> handleShowDebugInfoAction(targetEvent)
-            TimelineItemAction.Forward -> handleForwardAction(targetEvent)
-            TimelineItemAction.ReportContent -> handleReportAction(targetEvent)
-            TimelineItemAction.EndPoll -> handleEndPollAction(targetEvent, timelineState)
-            TimelineItemAction.Pin -> handlePinAction(targetEvent)
-            TimelineItemAction.Unpin -> handleUnpinAction(targetEvent)
-            TimelineItemAction.ViewInTimeline -> Unit
         }
     }
 
@@ -465,6 +600,7 @@ class MessagesPresenter(
                 if (targetEvent.eventId == null) return
                 navigator.navigateToEditPoll(targetEvent.eventId)
             }
+
             else -> {
                 val composerMode = MessageComposerMode.Edit(
                     targetEvent.eventOrTransactionId,
@@ -483,7 +619,7 @@ class MessagesPresenter(
         }
     }
 
-    private suspend fun handleActionAddCaption(
+    private fun handleActionAddCaption(
         targetEvent: TimelineItem.Event,
         composerState: MessageComposerState,
     ) {
@@ -496,7 +632,7 @@ class MessagesPresenter(
         )
     }
 
-    private suspend fun handleActionEditCaption(
+    private fun handleActionEditCaption(
         targetEvent: TimelineItem.Event,
         composerState: MessageComposerState,
     ) {

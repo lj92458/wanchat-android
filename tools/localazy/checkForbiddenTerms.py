@@ -13,7 +13,7 @@ file = sys.argv[1]
 # Dict of forbidden terms, with exceptions for some String name
 # Keys are the terms, values are the exceptions.
 forbiddenTerms = {
-    "Element": [
+    "WanChat": [
         # Those 2 strings are only used in debug version
         "screen_advanced_settings_element_call_base_url",
         "screen_advanced_settings_element_call_base_url_description",
@@ -24,7 +24,7 @@ forbiddenTerms = {
         # Contains "Element Call"
         "screen_incoming_call_subtitle_android",
         "call_invalid_audio_device_bluetooth_devices_disabled",
-        # Contains "Element X"
+        # Contains "WanChat"
         "screen_room_timeline_legacy_call",
         # We explicitly want to mention Element Pro in these 2:
         "screen_change_server_error_element_pro_required_title",

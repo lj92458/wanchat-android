@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.progressSemantics
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -142,6 +143,10 @@ private fun ColumnScope.TroubleshootNotificationsContent(state: TroubleshootNoti
                 )
             })
             RunTestButton(state = state)
+            //lj:首次打开这个界面，就直接开始测试，不需要用户点击
+            LaunchedEffect(Unit) {
+                state.eventSink(TroubleshootNotificationsEvents.StartTests)
+            }
         }
         AsyncAction.Loading -> Unit
         is AsyncAction.Failure -> {

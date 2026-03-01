@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -72,6 +73,9 @@ internal fun TimelineItemRow(
     onReadReceiptClick: (TimelineItem.Event) -> Unit,
     onSwipeToReply: (TimelineItem.Event) -> Unit,
     onJoinCallClick: () -> Unit,
+    onToggleItemSelection: (TimelineItem.Event) -> Unit = {},
+    isMultiSelect: Boolean = false,
+    selectedEvents: SnapshotStateMap<TimelineItem.Event, Boolean>,
     eventSink: (TimelineEvents.EventFromTimelineItem) -> Unit,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (TimelineItem.Event, Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit =
@@ -109,6 +113,7 @@ internal fun TimelineItemRow(
                     eventSink = eventSink,
                 )
             }
+
             is TimelineItem.Event -> {
                 when (timelineItem.content) {
                     is TimelineItemStateContent, is TimelineItemLegacyCallInviteContent -> {
@@ -122,6 +127,7 @@ internal fun TimelineItemRow(
                             eventSink = eventSink,
                         )
                     }
+
                     is TimelineItemRtcNotificationContent -> {
                         TimelineItemCallNotifyView(
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
@@ -180,6 +186,9 @@ internal fun TimelineItemRow(
                             onMoreReactionsClick = onMoreReactionsClick,
                             onReadReceiptClick = onReadReceiptClick,
                             onSwipeToReply = { onSwipeToReply(timelineItem) },
+                            onToggleItemSelection = onToggleItemSelection,
+                            isMultiSelect = isMultiSelect,
+                            selectedEvents = selectedEvents,
                             eventSink = eventSink,
                             eventContentView = { contentModifier, onContentLayoutChange ->
                                 eventContentView(timelineItem, contentModifier, onContentLayoutChange)
@@ -188,6 +197,7 @@ internal fun TimelineItemRow(
                     }
                 }
             }
+
             is TimelineItem.GroupedEvents -> {
                 TimelineItemGroupedEventsRow(
                     timelineItem = timelineItem,

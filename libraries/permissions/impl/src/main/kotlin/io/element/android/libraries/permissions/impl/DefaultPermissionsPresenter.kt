@@ -36,7 +36,9 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 private val loggerTag = LoggerTag("DefaultPermissionsPresenter")
-
+/**
+ * 只能处理运行时权限(app弹窗请求)。如果索要特殊权限(跳转到系统设置界面)，请使用SystemUtils中的函数
+ */
 @AssistedInject
 class DefaultPermissionsPresenter(
     @Assisted val permission: String,

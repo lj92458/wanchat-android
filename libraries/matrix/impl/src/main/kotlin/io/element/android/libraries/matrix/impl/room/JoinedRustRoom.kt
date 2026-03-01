@@ -33,9 +33,11 @@ import io.element.android.libraries.matrix.api.room.powerlevels.UserRoleChange
 import io.element.android.libraries.matrix.api.room.roomNotificationSettings
 import io.element.android.libraries.matrix.api.roomdirectory.RoomVisibility
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.matrix.api.timeline.TimelineForDelete
 import io.element.android.libraries.matrix.api.widget.MatrixWidgetDriver
 import io.element.android.libraries.matrix.api.widget.MatrixWidgetSettings
 import io.element.android.libraries.matrix.impl.core.RustSendHandle
+import io.element.android.libraries.matrix.impl.exception.mapClientException
 import io.element.android.libraries.matrix.impl.mapper.map
 import io.element.android.libraries.matrix.impl.room.history.map
 import io.element.android.libraries.matrix.impl.room.join.map
@@ -43,6 +45,7 @@ import io.element.android.libraries.matrix.impl.room.knock.RustKnockRequest
 import io.element.android.libraries.matrix.impl.room.member.RoomMemberListFetcher
 import io.element.android.libraries.matrix.impl.roomdirectory.map
 import io.element.android.libraries.matrix.impl.timeline.RustTimeline
+import io.element.android.libraries.matrix.impl.timeline_delete.RustTimelineForDelete
 import io.element.android.libraries.matrix.impl.util.MessageEventContent
 import io.element.android.libraries.matrix.impl.util.mxCallbackFlow
 import io.element.android.libraries.matrix.impl.widget.RustWidgetDriver
@@ -74,6 +77,7 @@ import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import uniffi.matrix_sdk.RoomPowerLevelChanges
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.fold
 import org.matrix.rustcomponents.sdk.IdentityStatusChange as RustIdentityStateChange
 import org.matrix.rustcomponents.sdk.KnockRequest as InnerKnockRequest
 import org.matrix.rustcomponents.sdk.Timeline as InnerTimeline
@@ -87,6 +91,9 @@ class JoinedRustRoom(
     private val roomContentForwarder: RoomContentForwarder,
     private val featureFlagService: FeatureFlagService,
 ) : JoinedRoom, BaseRoom by baseRoom {
+    override var longTaskCount: Int = 0
+    override var roomExited: Boolean = false
+
     // Create a dispatcher for all room methods...
     private val roomDispatcher = coroutineDispatchers.io.limitedParallelism(32)
     private val innerRoom = baseRoom.innerRoom
@@ -138,6 +145,34 @@ class JoinedRustRoom(
     override val liveTimeline = liveInnerTimeline.map(mode = Timeline.Mode.Live) {
         syncUpdateFlow.value = systemClock.epochMillis()
     }
+    override val timelineForDelete = liveInnerTimeline.mapForDelete(mode = TimelineForDelete.Mode.Live) {}
+    override suspend fun redact(eventId: String, reason: String?): Result<Unit> {
+        val raw = runCatchingExceptions {
+            innerRoom.redact(eventId, reason)
+        }
+        // 无论成功失败，都在这里把异常 map 到 ElementX 的 ClientException
+        return raw.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { throwable ->
+                // 转换 Rust 异常成 ElementX 异常
+                val mapped = throwable.mapClientException()
+                Result.failure(mapped)
+            }
+        )
+    }
+
+    override suspend fun sendStateEventRaw(eventType: String, stateKey: String, content: String): Result<String> {
+        return runCatchingExceptions {
+            innerRoom.sendStateEventRaw(eventType, stateKey, content)
+        }.fold(
+            onSuccess = { value -> Result.success(value) },
+            onFailure = { throwable ->
+                // 转换 Rust 异常成 ElementX 异常
+                val mapped = throwable.mapClientException()
+                Result.failure(mapped)
+            }
+        )
+    }
 
     init {
         val powerLevelChanges = roomInfoFlow.map { it.roomPowerLevels }.distinctUntilChanged()
@@ -162,18 +197,21 @@ class JoinedRustRoom(
                 maxEventsToLoad = 100u,
                 maxConcurrentRequests = 10u,
             )
+
             is CreateTimelineParams.MediaOnly -> TimelineFocus.Live(hideThreadedEvents = hideThreadedEvents)
             is CreateTimelineParams.Focused -> TimelineFocus.Event(
                 eventId = createTimelineParams.focusedEventId.value,
                 numContextEvents = 50u,
                 hideThreadedEvents = hideThreadedEvents,
             )
+
             is CreateTimelineParams.MediaOnlyFocused -> TimelineFocus.Event(
                 eventId = createTimelineParams.focusedEventId.value,
                 numContextEvents = 50u,
                 // Never hide threaded events in media focused timeline
                 hideThreadedEvents = false,
             )
+
             is CreateTimelineParams.Threaded -> TimelineFocus.Thread(
                 rootEventId = createTimelineParams.threadRootEventId.value,
             )
@@ -189,6 +227,7 @@ class JoinedRustRoom(
                     RoomMessageEventMessageType.AUDIO,
                 )
             )
+
             is CreateTimelineParams.Focused,
             CreateTimelineParams.PinnedOnly,
             is CreateTimelineParams.Threaded -> TimelineFilter.All
@@ -207,6 +246,7 @@ class JoinedRustRoom(
         val dateDividerMode = when (createTimelineParams) {
             is CreateTimelineParams.MediaOnly,
             is CreateTimelineParams.MediaOnlyFocused -> DateDividerMode.MONTHLY
+
             is CreateTimelineParams.Focused,
             CreateTimelineParams.PinnedOnly,
             is CreateTimelineParams.Threaded -> DateDividerMode.DAILY
@@ -240,6 +280,7 @@ class JoinedRustRoom(
                 is CreateTimelineParams.Focused,
                 is CreateTimelineParams.MediaOnlyFocused,
                 is CreateTimelineParams.Threaded -> it.toFocusEventException()
+
                 CreateTimelineParams.MediaOnly,
                 CreateTimelineParams.PinnedOnly -> it
             }
@@ -470,10 +511,22 @@ class JoinedRustRoom(
 
     override fun close() = destroy()
 
-    override fun destroy() {
-        baseRoom.destroy()
+    override fun destroy() = synchronized(this) {
+        roomExited = true
+        //如果有长期任务在执行(例如清空聊天记录)，这里不要销毁room。因为UI界面退出房间后，LongTaskManager.scope还在处理room相关的任务
+        if (longTaskCount == 0) {
+            baseRoom.destroy()
+        }
         liveInnerTimeline.destroy()
         Timber.d("Room $roomId destroyed")
+    }
+
+    override fun decrementTasks() = synchronized(this) {
+        longTaskCount--
+        //如果有长期任务在执行(例如清空聊天记录)，这里不要销毁room。因为UI界面退出房间后，LongTaskManager.scope还在处理room相关的任务
+        if (longTaskCount == 0 && roomExited) {
+            baseRoom.destroy()
+        }
     }
 
     private fun InnerTimeline.map(
@@ -489,6 +542,21 @@ class JoinedRustRoom(
             coroutineScope = timelineCoroutineScope,
             dispatcher = roomDispatcher,
             roomContentForwarder = roomContentForwarder,
+            onNewSyncedEvent = onNewSyncedEvent,
+        )
+    }
+
+    private fun InnerTimeline.mapForDelete(
+        mode: TimelineForDelete.Mode,
+        onNewSyncedEvent: () -> Unit = {},
+    ): TimelineForDelete {
+        val timelineCoroutineScope = roomCoroutineScope.childScope(coroutineDispatchers.main, "TimelineScope-$roomId-$this")
+        return RustTimelineForDelete(
+            mode = mode,
+            joinedRoom = this@JoinedRustRoom,
+            inner = this@mapForDelete, //@mapForDelete明确告诉阅读代码的人：“我指的是mapForDelete函数的接收者对象，而不是可能存在的其他作用域中的 this”
+            coroutineScope = timelineCoroutineScope,
+            dispatcher = roomDispatcher,
             onNewSyncedEvent = onNewSyncedEvent,
         )
     }

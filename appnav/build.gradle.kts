@@ -35,7 +35,9 @@ dependencies {
     implementation(projects.libraries.oidc.api)
     implementation(projects.libraries.preferences.api)
     implementation(projects.libraries.push.api)
+    implementation(projects.libraries.push.impl)
     implementation(projects.libraries.pushproviders.api)
+    implementation(projects.libraries.pushproviders.unifiedpush)
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.matrixui)
     implementation(projects.libraries.uiCommon)
@@ -47,6 +49,12 @@ dependencies {
     implementation(projects.features.announcement.api)
     implementation(projects.features.ftue.api)
     implementation(projects.features.share.api)
+    
+    // 添加 troubleshoot 模块依赖
+    implementation(projects.libraries.troubleshoot.api)
+    implementation(projects.libraries.troubleshoot.impl)
+    implementation(projects.libraries.permissions.api)
+    implementation(projects.libraries.permissions.noop)
 
     implementation(projects.services.apperror.impl)
     implementation(projects.services.appnavstate.api)

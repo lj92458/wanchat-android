@@ -45,6 +45,7 @@
   <string name="screen_room_timeline_legacy_call">"不支持的呼叫。询问呼叫者是否可以使用新的 Element X 应用程序。"</string>
   <string name="screen_room_timeline_less_reactions">"折叠"</string>
   <string name="screen_room_timeline_message_copied">"消息已复制"</string>
+  <string name="screen_room_timeline_message_deleting">"消息即将在5分钟后被删除"</string>
   <string name="screen_room_timeline_no_permission_to_post">"您无权在此聊天室发言"</string>
   <plurals name="screen_room_timeline_reaction_a11y">
     <item quantity="other">"%1$d 个成员添加表情符号 %2$s"</item>
@@ -71,4 +72,6 @@
     <item quantity="other">"%1$s 正在输入"</item>
   </plurals>
   <string name="screen_room_typing_two_members">"%1$s 和 %2$s"</string>
+  <string name="screen_room_multi_select_msg_count">"已选择$1$d条消息"</string>
+  <string name="screen_room_begin_time">"自动删除 (从%1$s开始生效)"</string>
 </resources>

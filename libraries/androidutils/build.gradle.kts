@@ -33,6 +33,7 @@ dependencies {
     implementation(libs.androidx.exifinterface)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.serialization.json)
+    implementation(libs.androidx.biometric)
     api(libs.androidx.browser)
 
     testCommonDependencies(libs)

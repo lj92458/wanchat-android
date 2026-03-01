@@ -18,7 +18,7 @@ policyUri: "https://element.io/privacy"
 
 
 Android:
-clientName = "Element",
+clientName = "WanChat",
 redirectUri = "io.element.android:/",
 clientUri = "https://element.io",
 tosUri = "https://element.io/user-terms-of-service",

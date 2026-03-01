@@ -53,6 +53,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 interface ActionListPresenter : Presenter<ActionListState> {
     interface Factory {
@@ -239,6 +240,10 @@ class DefaultActionListPresenter(
             if (canRedact) {
                 add(TimelineItemAction.Redact)
             }
+            if (usersEventPermissions.canRedactOwn || usersEventPermissions.canRedactOther) {
+                add(TimelineItemAction.MultiSelect)
+            }
+            //Timber.d("buildActions被执行")
         }
             .postFilter(timelineItem.content)
             .sortedWith(comparator)

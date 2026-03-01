@@ -83,6 +83,53 @@ fun IconTitleSubtitleMolecule(
         }
     }
 }
+/** 靠左显示 */
+@Composable
+fun IconTitleSubtitleMolecule2(
+    title: String,
+    subTitle: String?,
+    iconStyle: BigIcon.Style,
+    modifier: Modifier = Modifier,
+    showBetaLabel: Boolean = false,
+) {
+    Column(modifier) {
+        BigIcon(
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+            style = iconStyle,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            itemVerticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = title,
+                modifier = Modifier
+                    .semantics {
+                        heading()
+                    },
+                textAlign = TextAlign.Center,
+                style = ElementTheme.typography.fontHeadingMdBold,
+                color = ElementTheme.colors.textPrimary,
+            )
+            if (showBetaLabel) {
+                BetaLabel()
+            }
+        }
+        if (subTitle != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = subTitle,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Left,
+                style = ElementTheme.typography.fontBodyMdRegular,
+                color = ElementTheme.colors.textSecondary,
+            )
+        }
+    }
+}
 
 @PreviewsDayNight
 @Composable

@@ -43,7 +43,7 @@ plugins {
 setupKover()
 
 android {
-    namespace = "io.element.android.x"
+    namespace = "io.element.android.x" //这里不要改，它需要和包名一致。因为项目的包名允许不和applicationId一致
 
     defaultConfig {
         applicationId = BuildTimeConfig.APPLICATION_ID
@@ -109,7 +109,7 @@ android {
     buildTypes {
         val oidcRedirectSchemeBase = BuildTimeConfig.METADATA_HOST_REVERSED ?: "io.element.android"
         getByName("debug") {
-            resValue("string", "app_name", "$baseAppName dbg")
+            //resValue("string", "app_name", "$baseAppName dbg") //放到string.xml中了
             resValue(
                 "string",
                 "login_redirect_scheme",
@@ -120,7 +120,7 @@ android {
         }
 
         getByName("release") {
-            resValue("string", "app_name", baseAppName)
+            //resValue("string", "app_name", baseAppName)
             resValue(
                 "string",
                 "login_redirect_scheme",
@@ -142,7 +142,7 @@ android {
             initWith(release)
             applicationIdSuffix = ".nightly"
             versionNameSuffix = "-nightly"
-            resValue("string", "app_name", "$baseAppName nightly")
+            //resValue("string", "app_name", "$baseAppName nightly")
             resValue(
                 "string",
                 "login_redirect_scheme",

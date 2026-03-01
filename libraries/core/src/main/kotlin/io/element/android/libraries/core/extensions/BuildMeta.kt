@@ -12,8 +12,8 @@ import io.element.android.libraries.core.meta.BuildType
 
 fun BuildMeta.isElement(): Boolean {
     return when (buildType) {
-        BuildType.RELEASE -> applicationId == "io.element.android.x"
-        BuildType.NIGHTLY -> applicationId == "io.element.android.x.nightly"
-        BuildType.DEBUG -> applicationId == "io.element.android.x.debug"
+        BuildType.RELEASE -> applicationId == "info.wanchat.android"
+        BuildType.NIGHTLY -> applicationId == "info.wanchat.android.nightly"
+        BuildType.DEBUG -> applicationId == "info.wanchat.android.debug"
     }
 }

@@ -116,7 +116,7 @@ class PinnedMessagesListNode(
                         context.getString(CommonStrings.common_copied_to_clipboard)
                     )
                 },
-                modifier = modifier
+                modifier = modifier,
             )
         }
     }

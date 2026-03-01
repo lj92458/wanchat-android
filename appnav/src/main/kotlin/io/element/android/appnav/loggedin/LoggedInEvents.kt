@@ -11,4 +11,13 @@ sealed interface LoggedInEvents {
     data class CloseErrorDialog(val doNotShowAgain: Boolean) : LoggedInEvents
     data object CheckSlidingSyncProxyAvailability : LoggedInEvents
     data object LogoutAndMigrateToNativeSlidingSync : LoggedInEvents
+    data class ChangeStep(val ntfyAction: NtfyAction?): LoggedInEvents
+    data class UserDelayed(val delayed: Boolean): LoggedInEvents
+    data class IsLatter(val isLatter: Boolean): LoggedInEvents
+}
+
+enum class DialogResult {
+    Ok,
+    Latter,
+    Never
 }

@@ -100,6 +100,12 @@ class TroubleshootTestSuite(
     ) {
         tests[testIndex].quickFix(coroutineScope, navigator)
     }
+    fun reset() {
+        _state.value = TroubleshootTestSuiteState(
+            mainState = AsyncAction.Uninitialized,
+            tests = emptyList<NotificationTroubleshootTestState>().toImmutableList()
+        )
+    }
 }
 
 fun List<NotificationTroubleshootTestState>.computeMainState(): AsyncAction<Unit> {

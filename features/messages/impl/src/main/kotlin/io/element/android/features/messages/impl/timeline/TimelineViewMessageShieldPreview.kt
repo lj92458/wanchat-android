@@ -9,6 +9,8 @@ package io.element.android.features.messages.impl.timeline
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.snapshots.SnapshotStateMap
+import androidx.compose.runtime.snapshots.SnapshotStateSet
 import io.element.android.features.messages.impl.timeline.components.aCriticalShield
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.di.aFakeTimelineItemPresenterFactories
@@ -50,6 +52,7 @@ internal fun TimelineViewMessageShieldPreview() = ElementPreview {
             onReadReceiptClick = {},
             onJoinCallClick = {},
             forceJumpToBottomVisibility = true,
+            selectedEvents = SnapshotStateMap(),
         )
     }
 }

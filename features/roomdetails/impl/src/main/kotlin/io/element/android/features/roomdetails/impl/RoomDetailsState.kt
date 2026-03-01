@@ -11,6 +11,7 @@ import androidx.compose.runtime.Immutable
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.userprofile.api.UserProfileState
+import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -19,6 +20,7 @@ import io.element.android.libraries.matrix.api.room.RoomNotificationSettings
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.Flow
 
 data class RoomDetailsState(
     val roomId: RoomId,
@@ -48,7 +50,10 @@ data class RoomDetailsState(
     val canReportRoom: Boolean,
     val isTombstoned: Boolean,
     val showDebugInfo: Boolean,
-    val eventSink: (RoomDetailsEvent) -> Unit
+    val userEventPermissions: UserEventPermissions,
+    var showConfirmClearDialog: Boolean = false,
+    val eventSink: (RoomDetailsEvent) -> Unit,
+    val clearProgressState: ClearProgressState = ClearProgressState(LongTaskManager.ClearType.CLEAR, false, 0, 0, 0, false),
 ) {
     val roomBadges = buildList {
         if (isEncrypted) {
@@ -61,6 +66,15 @@ data class RoomDetailsState(
         }
     }.toImmutableList()
 }
+
+data class ClearProgressState(
+    var clearType: LongTaskManager.ClearType,
+    var isRunning: Boolean,
+    var collectedItems: Int,
+    var deletedItems: Int,
+    var loadedPages: Int,
+    var isPaginating: Boolean,
+)
 
 @Immutable
 sealed interface RoomDetailsType {
@@ -82,4 +96,22 @@ enum class RoomBadge {
     ENCRYPTED,
     NOT_ENCRYPTED,
     PUBLIC,
+}
+
+data class UserEventPermissions(
+    val canRedactOwn: Boolean,
+    val canRedactOther: Boolean,
+    val canSendMessage: Boolean,
+    val canSendReaction: Boolean,
+    val canPinUnpin: Boolean,
+) {
+    companion object {
+        val DEFAULT = UserEventPermissions(
+            canRedactOwn = true,
+            canRedactOther = false,
+            canSendMessage = true,
+            canSendReaction = true,
+            canPinUnpin = false
+        )
+    }
 }

@@ -7,6 +7,8 @@
 
 package io.element.android.features.roomdetails.impl
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -15,11 +17,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +35,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +51,7 @@ import io.element.android.features.userprofile.shared.blockuser.BlockUserDialogs
 import io.element.android.features.userprofile.shared.blockuser.BlockUserSection
 import io.element.android.libraries.androidutils.system.copyToClipboard
 import io.element.android.libraries.architecture.coverage.ExcludeFromCoverage
+import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.designsystem.atomic.atoms.MatrixBadgeAtom
 import io.element.android.libraries.designsystem.atomic.molecules.MatrixBadgeRowMolecule
 import io.element.android.libraries.designsystem.components.ClickableLinkText
@@ -54,6 +62,7 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.avatar.DmAvatars
 import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.button.MainActionButton
+import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
 import io.element.android.libraries.designsystem.components.preferences.PreferenceSwitch
@@ -61,6 +70,8 @@ import io.element.android.libraries.designsystem.modifiers.niceClickable
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.preview.ElementPreviewLight
 import io.element.android.libraries.designsystem.preview.PreviewWithLargeHeight
+import io.element.android.libraries.designsystem.theme.components.Button
+import io.element.android.libraries.designsystem.theme.components.ButtonSize
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.DropdownMenu
 import io.element.android.libraries.designsystem.theme.components.DropdownMenuItem
@@ -113,11 +124,21 @@ fun RoomDetailsView(
     leaveRoomView: @Composable () -> Unit,
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
+    //如果正在翻页，就阻止系统的返回键。
+    BackHandler(enabled = state.clearProgressState.isPaginating) {
+        state.eventSink(RoomDetailsEvent.ClickWhenPaginate)
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
             RoomDetailsTopBar(
-                goBack = goBack,
+                goBack = {
+                    goBack()
+                    //如果正在翻页，就不准返回
+                    if (state.clearProgressState.isPaginating) state.eventSink(RoomDetailsEvent.ClickWhenPaginate)
+                    else goBack
+                },
                 showEdit = state.canEdit,
                 onActionClick = onActionClick
             )
@@ -149,6 +170,7 @@ fun RoomDetailsView(
                         }
                     )
                 }
+
                 is RoomDetailsType.Dm -> {
                     DmHeaderSection(
                         me = state.roomType.me,
@@ -184,6 +206,48 @@ fun RoomDetailsView(
             }
 
             PreferenceCategory {
+                // 清空聊天记录
+                if (state.userEventPermissions.canRedactOwn && state.userEventPermissions.canRedactOther) {
+
+                    ListItem(
+                        enabled = !state.clearProgressState.isRunning,
+                        headlineContent = { Text(text = stringResource(R.string.screen_room_details_clear_title)) },
+                        supportingContent = {
+                            if (state.clearProgressState.isRunning && state.clearProgressState.clearType == LongTaskManager.ClearType.CLEAR) {
+                                if (!state.clearProgressState.isPaginating) {//正在翻页
+                                    Text(
+                                        stringResource(R.string.screen_room_details_clear_running) +
+                                            state.clearProgressState.deletedItems + "/" + state.clearProgressState.collectedItems
+                                    )
+                                }
+                            } else Text(stringResource(R.string.screen_room_details_clear_stoped))
+                        },
+                        trailingContent = ListItemContent.Custom(
+                            content = {
+                                if (state.clearProgressState.isRunning && state.clearProgressState.clearType == LongTaskManager.ClearType.CLEAR) {
+                                    Button(
+                                        text = stringResource(R.string.screen_room_details_clear_stop),
+                                        onClick = { state.eventSink(RoomDetailsEvent.StopClearMessages) }
+                                    )
+                                }
+                            }
+                        ),
+                        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Delete())),
+                        style = ListItemStyle.Destructive,
+                        onClick = { state.eventSink(RoomDetailsEvent.ShowConfirmClearDialog(true)) },
+                    )
+                    if (state.showConfirmClearDialog) {
+                        ConfirmationDialog(
+                            destructiveSubmit = true,
+                            title = stringResource(R.string.screen_room_details_clear_title),
+                            content = stringResource(R.string.screen_room_details_clear_dialog),
+                            onDismiss = { state.eventSink(RoomDetailsEvent.ShowConfirmClearDialog(false)) },
+                            onSubmitClick = { state.eventSink(RoomDetailsEvent.ClearMessages) },
+                        )
+                    }
+                    //end 弹窗确认
+                }
+
                 if (state.roomNotificationSettings != null) {
                     NotificationItem(
                         isDefaultMode = state.roomNotificationSettings.isDefault,
@@ -265,6 +329,38 @@ fun RoomDetailsView(
                     roomId = state.roomId,
                 )
             }
+        }
+    }
+    //如果正在翻页，就加遮罩，防止屏幕被点击。
+    if (state.clearProgressState.isPaginating && state.clearProgressState.clearType == LongTaskManager.ClearType.CLEAR) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f)) //0.5f
+                // 拦截触摸。不要用clickable(enabled = false) {}，它只是禁用了点击效果，不会阻止手势，仍然会让事件往下传，
+                .pointerInput(Unit) {
+                    awaitPointerEventScope { while (true) awaitPointerEvent() }
+                }
+        ) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(Color.White, RoundedCornerShape(8.dp))
+                    .width(350.dp)
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.screen_room_details_wait, state.clearProgressState.loadedPages),
+                    textAlign = TextAlign.Start,
+                )
+                Button(
+                    size = ButtonSize.Small,
+                    text = stringResource(R.string.screen_room_details_clear_stop),
+                    onClick = { state.eventSink(RoomDetailsEvent.StopClearMessages) }
+                )
+            }
+
         }
     }
 }
@@ -501,6 +597,7 @@ private fun RoomBadge.toMatrixBadgeData(): MatrixBadgeAtom.MatrixBadgeData {
                 type = MatrixBadgeAtom.Type.Positive,
             )
         }
+
         RoomBadge.NOT_ENCRYPTED -> {
             MatrixBadgeAtom.MatrixBadgeData(
                 text = stringResource(R.string.screen_room_details_badge_not_encrypted),
@@ -508,6 +605,7 @@ private fun RoomBadge.toMatrixBadgeData(): MatrixBadgeAtom.MatrixBadgeData {
                 type = MatrixBadgeAtom.Type.Info,
             )
         }
+
         RoomBadge.PUBLIC -> {
             MatrixBadgeAtom.MatrixBadgeData(
                 text = stringResource(R.string.screen_room_details_badge_public),
@@ -607,10 +705,12 @@ private fun ProfileItem(
                 iconSource = IconSource.Vector(CompoundIcons.Verified()),
                 tintColor = ElementTheme.colors.iconSuccessPrimary,
             )
+
             UserProfileVerificationState.VERIFICATION_VIOLATION -> ListItemContent.Icon(
                 iconSource = IconSource.Vector(CompoundIcons.ErrorSolid()),
                 tintColor = ElementTheme.colors.iconCriticalPrimary,
             )
+
             else -> null
         },
         onClick = onClick,

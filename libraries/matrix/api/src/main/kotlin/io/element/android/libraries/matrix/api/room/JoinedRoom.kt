@@ -20,12 +20,23 @@ import io.element.android.libraries.matrix.api.room.powerlevels.RoomPowerLevelsV
 import io.element.android.libraries.matrix.api.room.powerlevels.UserRoleChange
 import io.element.android.libraries.matrix.api.roomdirectory.RoomVisibility
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.matrix.api.timeline.TimelineForDelete
 import io.element.android.libraries.matrix.api.widget.MatrixWidgetDriver
 import io.element.android.libraries.matrix.api.widget.MatrixWidgetSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.inc
 
 interface JoinedRoom : BaseRoom {
+    /**
+     * 长期任务计数器，当存在长任务时，该计数器将增加。当计数器变成0，才能调用destroyRoom函数
+     */
+    var longTaskCount: Int
+
+    /**
+     * 当房间处于退出状态时，才能根据longTaskCount判断是否销毁room
+     */
+    var roomExited: Boolean
     val syncUpdateFlow: StateFlow<Long>
 
     val roomTypingMembersFlow: Flow<List<UserId>>
@@ -41,6 +52,13 @@ interface JoinedRoom : BaseRoom {
      * The live timeline of the room. Must be used to send Event to a room.
      */
     val liveTimeline: Timeline
+
+    /**
+     * The timeline for delete of the room. just for delete events
+     */
+    val timelineForDelete: TimelineForDelete
+    suspend fun redact(eventId: String, reason: String?): Result<Unit>
+    suspend fun sendStateEventRaw(eventType: String, stateKey: String, content: String): Result<String>
 
     /**
      * Create a new timeline.
@@ -176,4 +194,16 @@ interface JoinedRoom : BaseRoom {
      *
      */
     suspend fun withdrawVerificationAndResend(userIds: List<UserId>, sendHandle: SendHandle): Result<Unit>
+    /**
+     * 任务开始时，增加task计数。记得等任务完成后调用decrementTasks或completeLongTask
+     */
+    fun incrementTasks() = synchronized(this) {
+        ++longTaskCount
+    }
+
+    /**
+     * 任务结束时，减少task计数。记得在任务开始时调用incrementTasks来增加计数。
+     */
+    fun decrementTasks()
+    fun completeLongTask() = decrementTasks()
 }

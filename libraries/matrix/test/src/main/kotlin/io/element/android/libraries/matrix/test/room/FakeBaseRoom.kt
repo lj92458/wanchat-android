@@ -19,6 +19,7 @@ import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.StateEventType
+import io.element.android.libraries.matrix.api.room.custominfo.RoomCustomInfo
 import io.element.android.libraries.matrix.api.room.draft.ComposerDraft
 import io.element.android.libraries.matrix.api.room.powerlevels.RoomPowerLevelsValues
 import io.element.android.libraries.matrix.api.room.tombstone.PredecessorRoom
@@ -39,6 +40,7 @@ class FakeBaseRoom(
     override val sessionId: SessionId = A_SESSION_ID,
     override val roomId: RoomId = A_ROOM_ID,
     initialRoomInfo: RoomInfo = aRoomInfo(),
+    initialCustomInfo: RoomCustomInfo = RoomCustomInfo(roomId.value),
     override val roomCoroutineScope: CoroutineScope = TestScope(),
     private var roomPermalinkResult: () -> Result<String> = { lambdaError() },
     private var eventPermalinkResult: (EventId) -> Result<String> = { lambdaError() },
@@ -75,6 +77,8 @@ class FakeBaseRoom(
 ) : BaseRoom {
     private val _roomInfoFlow: MutableStateFlow<RoomInfo> = MutableStateFlow(initialRoomInfo)
     override val roomInfoFlow: StateFlow<RoomInfo> = _roomInfoFlow
+    private val _roomCustomInfoFlow: MutableStateFlow<RoomCustomInfo> = MutableStateFlow(initialCustomInfo)
+    override val roomCustomInfoFlow: StateFlow<RoomCustomInfo> = _roomCustomInfoFlow
 
     fun givenRoomInfo(roomInfo: RoomInfo) {
         _roomInfoFlow.tryEmit(roomInfo)

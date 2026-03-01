@@ -62,7 +62,7 @@ class NotificationSettingsPresenter(
         val localCoroutineScope = rememberCoroutineScope()
         val appNotificationsEnabled by remember {
             userPushStore.getNotificationEnabledForDevice()
-        }.collectAsState(initial = false)
+        }.collectAsState(initial = true) //lj:默认开启通知
 
         val matrixSettings: MutableState<NotificationSettingsState.MatrixSettings> = remember {
             mutableStateOf(NotificationSettingsState.MatrixSettings.Uninitialized)

@@ -8,6 +8,7 @@ android_gradle_plugin = "8.11.1"
 # When updateing this, please also update the version in the file ./idea/kotlinc.xml
 kotlin = "2.2.20"
 kotlinpoet = "2.2.0"
+kotlinReflect = "2.1.21"
 ksp = "2.2.20-2.0.2"
 firebaseAppDistribution = "5.2.0"
 
@@ -70,6 +71,7 @@ android_gradle_plugin = { module = "com.android.tools.build:gradle", version.ref
 compose_compiler_plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 # https://developer.android.com/studio/write/java8-support#library-desugaring-versions
 android_desugar = "com.android.tools:desugar_jdk_libs:2.1.5"
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlinReflect" }
 kotlin_gradle_plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 metro_gradle_plugin = { module = "dev.zacsweers.metro:gradle-plugin", version.ref = "metro" }
 kotlin_compiler = { module = "org.jetbrains.kotlin:kotlin-compiler", version.ref = "kotlin" }
@@ -177,7 +179,7 @@ test_detekt_test = { module = "io.gitlab.arturbosch.detekt:detekt-test", version
 # https://github.com/matrix-org/matrix-rust-components-kotlin/commits/main/sdk/sdk-android/src/main/kotlin/org/matrix/rustcomponents/sdk/matrix_sdk_ffi.kt
 # All new features should not be implemented in the pull request that upgrades the version, developers should
 # only fix API breaks and may add some TODOs.
-matrix_sdk = "org.matrix.rustcomponents:sdk-android:25.11.4"
+matrix_sdk = "info.wanchat.rustcomponents:sdk-android:0.1.0"
 
 # Others
 coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }

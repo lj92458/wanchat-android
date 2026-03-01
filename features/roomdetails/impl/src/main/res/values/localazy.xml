@@ -59,6 +59,14 @@
   <string name="screen_room_details_notification_mode_custom">"Custom"</string>
   <string name="screen_room_details_notification_mode_default">"Default"</string>
   <string name="screen_room_details_notification_title">"Notifications"</string>
+  <string name="screen_room_details_clear_title">"clear all messages"</string>
+  <string name="screen_room_details_clear_dialog">"Note: It takes 5 seconds to delete 1 item and 14 hours to delete 10k items."</string>
+  <string name="screen_room_details_cleared">"Messages cleared"</string>
+  <string name="screen_room_details_wait">"During the collection phase, please don't take any actions! Collected %1$d pages."</string>
+  <string name="screen_room_details_do_nothing">"Please do not take any action！"</string>
+  <string name="screen_room_details_clear_running">"running "</string>
+  <string name="screen_room_details_clear_stoped">"stoped"</string>
+  <string name="screen_room_details_clear_stop">"stop"</string>
   <string name="screen_room_details_pinned_events_row_title">"Pinned messages"</string>
   <string name="screen_room_details_profile_row_title">"Profile"</string>
   <string name="screen_room_details_requests_to_join_title">"Requests to join"</string>

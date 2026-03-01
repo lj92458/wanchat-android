@@ -53,6 +53,7 @@ internal class MatrixTimelineDiffProcessor(
                 val items = diff.values.map { it.asMatrixTimelineItem() }
                 addAll(items)
             }
+
             is TimelineDiff.PushBack -> {
                 val item = diff.value.asMatrixTimelineItem()
                 if (item is MatrixTimelineItem.Event && item.event.content is RoomMembershipContent) {
@@ -62,35 +63,44 @@ internal class MatrixTimelineDiffProcessor(
                 }
                 add(item)
             }
+
             is TimelineDiff.PushFront -> {
                 val item = diff.value.asMatrixTimelineItem()
                 add(0, item)
             }
+
             is TimelineDiff.Set -> {
                 val item = diff.value.asMatrixTimelineItem()
                 set(diff.index.toInt(), item)
             }
+
             is TimelineDiff.Insert -> {
                 val item = diff.value.asMatrixTimelineItem()
                 add(diff.index.toInt(), item)
             }
+
             is TimelineDiff.Remove -> {
                 removeAt(diff.index.toInt())
             }
+
             is TimelineDiff.Reset -> {
                 clear()
                 val items = diff.values.map { it.asMatrixTimelineItem() }
                 addAll(items)
             }
+
             TimelineDiff.PopFront -> {
                 removeFirstOrNull()
             }
+
             TimelineDiff.PopBack -> {
                 removeLastOrNull()
             }
+
             TimelineDiff.Clear -> {
                 clear()
             }
+
             is TimelineDiff.Truncate -> {
                 subList(diff.length.toInt(), size).clear()
             }

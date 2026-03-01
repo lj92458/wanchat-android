@@ -11,6 +11,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,14 +21,23 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -42,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerEvents
 import io.element.android.features.messages.impl.actionlist.ActionListEvents
 import io.element.android.features.messages.impl.actionlist.ActionListView
@@ -75,14 +87,22 @@ import io.element.android.libraries.androidutils.ui.hideKeyboard
 import io.element.android.libraries.designsystem.atomic.molecules.ComposerAlertMolecule
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayout
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayoutState
+import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.rememberExpandableBottomSheetLayoutState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toAnnotatedString
 import io.element.android.libraries.designsystem.theme.components.BottomSheetDragHandle
+import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
+import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
+import io.element.android.libraries.designsystem.theme.components.ListItem
+import io.element.android.libraries.designsystem.theme.components.ListItemStyle
+import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.designsystem.theme.components.hide
 import io.element.android.libraries.designsystem.utils.HideKeyboardWhenDisposed
 import io.element.android.libraries.designsystem.utils.KeepScreenOn
 import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
@@ -92,6 +112,7 @@ import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
+import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState.AutoDeleteEnum
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.user.MatrixUser
@@ -99,8 +120,12 @@ import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.wysiwyg.link.Link
 import timber.log.Timber
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.time.Duration.Companion.milliseconds
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagesView(
     state: MessagesState,
@@ -117,6 +142,8 @@ fun MessagesView(
     forceJumpToBottomVisibility: Boolean = false,
     knockRequestsBannerView: @Composable () -> Unit,
 ) {
+    val sheetState = rememberModalBottomSheetState()
+    val coroutineScope = rememberCoroutineScope()
     OnLifecycleEvent { _, event ->
         state.voiceMessageComposerState.eventSink(VoiceMessageComposerEvents.LifecycleEvent(event))
     }
@@ -126,6 +153,7 @@ fun MessagesView(
     HideKeyboardWhenDisposed()
 
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
+    var showAutoDeleteOptions by remember { mutableStateOf(false) }
 
     // This is needed because the composer is inside an AndroidView that can't be affected by the FocusManager in Compose
     val localView = LocalView.current
@@ -182,6 +210,28 @@ fun MessagesView(
             Scaffold(
                 contentWindowInsets = WindowInsets.statusBars,
                 topBar = {
+                    if (state.isMultiSelect) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            BackButton(onClick = { state.eventSink(MessagesEvents.ToggleMultiSelectMode) })
+                            TextButton(
+                                onClick = {},
+                            ) {
+                                Text(stringResource(R.string.screen_room_multi_select_msg_count, state.selectedEvents.size))
+                            }
+                            IconButton(
+                                onClick = {},
+                            ) {
+                                Icon(
+                                    imageVector = CompoundIcons.Search(),
+                                    contentDescription = null,
+                                )
+                            }
+
+                        }
+                    } else {
                         if (state.timelineState.timelineMode is Timeline.Mode.Thread) {
                             ThreadTopBar(
                                 roomName = state.roomName,
@@ -201,8 +251,12 @@ fun MessagesView(
                                 onBackClick = { hidingKeyboard { onBackClick() } },
                                 onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
                                 onJoinCallClick = onJoinCallClick,
+                                autoDeleteState = state.autoDeleteState,
+                                onAutoDeleteClick = { showAutoDeleteOptions = true },
+                                clearProgress = state.clearProgress,
                             )
                         }
+                    }
                 },
                 content = { padding ->
                     Box(
@@ -269,13 +323,32 @@ fun MessagesView(
             )
         },
         bottomSheetContent = {
-            MessagesViewComposerBottomSheetContents(
-                state = state,
-                onLinkClick = { url, customTab -> onLinkClick(url, customTab) },
-                onRoomSuccessorClick = { roomId ->
-                    state.timelineState.eventSink(TimelineEvents.NavigateToPredecessorOrSuccessorRoom(roomId = roomId))
-                },
-            )
+            if (state.isMultiSelect) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .border(width = 1.dp, color = ElementTheme.colors.borderDisabled)
+                ) {
+                    //删除按钮
+                    IconButton(
+                        onClick = { state.eventSink(MessagesEvents.MultiDelete) },
+                    ) {
+                        Icon(
+                            imageVector = CompoundIcons.Delete(),
+                            contentDescription = null,
+                            //Modifier.size(48.dp),
+                        )
+                    }
+                }
+            } else {
+                MessagesViewComposerBottomSheetContents(
+                    state = state,
+                    onLinkClick = { url, customTab -> onLinkClick(url, customTab) },
+                    onRoomSuccessorClick = { roomId ->
+                        state.timelineState.eventSink(TimelineEvents.NavigateToPredecessorOrSuccessorRoom(roomId = roomId))
+                    },
+                )
+            }
         },
         sheetDragHandle = if (state.composerState.showTextFormatting) {
             @Composable { toggleAction ->
@@ -341,6 +414,57 @@ fun MessagesView(
         },
         state = state.linkState,
     )
+    //“自动删除”时间列表
+    if (showAutoDeleteOptions) {
+        ModalBottomSheet(
+            sheetState = sheetState,
+            onDismissRequest = { showAutoDeleteOptions = false },
+            modifier = modifier,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    stringResource(
+                        R.string.screen_room_begin_time,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                            .withZone(ZoneId.systemDefault())
+                            .format(Instant.ofEpochMilli(state.autoDeleteState.stopTime))
+                    ),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 20.dp)
+                )
+                HorizontalDivider()
+
+                AutoDeleteEnum.entries.forEach {
+                    ListItem(
+                        modifier = Modifier
+                            .clickable {
+                                sheetState.hide(coroutineScope) {
+                                    showAutoDeleteOptions = false
+                                    state.eventSink(MessagesEvents.AutoDeleteStateChange(it))
+                                }
+                            }
+                            .align(Alignment.CenterHorizontally)
+                            .height(40.dp),
+                        headlineContent = {
+                            Text(
+                                text = stringResource(id = it.stringRes),
+                                textAlign = TextAlign.Center // 文本内容居中
+                            )
+                        },
+                        leadingContent = null,
+                        style = when (state.autoDeleteState.autoDeleteEnum) {
+                            it -> ListItemStyle.Destructive
+                            else -> ListItemStyle.Primary
+                        }
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -426,6 +550,10 @@ private fun MessagesViewContent(
                 forceJumpToBottomVisibility = forceJumpToBottomVisibility,
                 onJoinCallClick = onJoinCallClick,
                 nestedScrollConnection = scrollBehavior.nestedScrollConnection,
+                //state里面有eventSink函数，哪一层没有继续把state下传，他就应该把eventSink封装成自己的函数并下传
+                onToggleItemSelection = { event -> state.eventSink(MessagesEvents.ToggleEventSelection(event)) },
+                isMultiSelect = state.isMultiSelect,
+                selectedEvents = state.selectedEvents,
             )
 
             if (state.timelineState.timelineMode !is Timeline.Mode.Thread) {
@@ -461,6 +589,7 @@ private fun MessagesViewComposerBottomSheetContents(
         state.successorRoom != null -> {
             SuccessorRoomBanner(roomSuccessor = state.successorRoom, onRoomSuccessorClick = onRoomSuccessorClick)
         }
+
         state.userEventPermissions.canSendMessage -> {
             Column(modifier = Modifier.fillMaxWidth()) {
                 // Do not show the identity change if user is composing a Rich message or is seeing suggestion(s).
@@ -485,6 +614,7 @@ private fun MessagesViewComposerBottomSheetContents(
                 }
             }
         }
+
         else -> {
             CantSendMessageBanner()
         }

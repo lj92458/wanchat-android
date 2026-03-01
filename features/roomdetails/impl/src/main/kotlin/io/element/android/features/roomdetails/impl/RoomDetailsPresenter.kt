@@ -9,15 +9,18 @@ package io.element.android.features.roomdetails.impl
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
 import im.vector.app.features.analytics.plan.Interaction
-import io.element.android.features.leaveroom.api.LeaveRoomEvent
+import io.element.android.features.leaveroom.api.LeaveRoomEvent.LeaveRoom
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roomdetails.impl.members.details.RoomMemberDetailsPresenter
@@ -25,6 +28,7 @@ import io.element.android.features.roomdetails.impl.securityandprivacy.permissio
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.designsystem.utils.snackbar.LocalSnackbarDispatcher
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
@@ -34,11 +38,19 @@ import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import io.element.android.libraries.matrix.api.room.MessageEventType
+import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.room.RoomMembersState
+import io.element.android.libraries.matrix.api.room.RoomRuntimeState
 import io.element.android.libraries.matrix.api.room.StateEventType
+import io.element.android.libraries.matrix.api.room.clearRoom
 import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.api.room.powerlevels.canInvite
+import io.element.android.libraries.matrix.api.room.powerlevels.canPinUnpin
+import io.element.android.libraries.matrix.api.room.powerlevels.canRedactOther
+import io.element.android.libraries.matrix.api.room.powerlevels.canRedactOwn
+import io.element.android.libraries.matrix.api.room.powerlevels.canSendMessage
 import io.element.android.libraries.matrix.api.room.powerlevels.canSendState
 import io.element.android.libraries.matrix.api.room.roomNotificationSettings
 import io.element.android.libraries.matrix.ui.room.canHandleKnockRequestsAsState
@@ -54,6 +66,7 @@ import io.element.android.services.analyticsproviders.api.trackers.captureIntera
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
@@ -107,6 +120,21 @@ class RoomDetailsPresenter(
         val roomType = getRoomType(dmMember, currentMember)
         val roomCallState = roomCallStatePresenter.present()
         val joinedMemberCount by remember { derivedStateOf { roomInfo.joinedMembersCount } }
+        var showConfirmClearDialog by remember { mutableStateOf(false) }
+        val userEventPermissions by userEventPermissions(roomInfo)
+        val clearProgress by LongTaskManager.progress.map { it[room.roomId.value] }.collectAsState(initial = null)
+        val clearProgressState by remember(clearProgress) {
+            derivedStateOf {
+                ClearProgressState(
+                    clearType = clearProgress?.clearType?: LongTaskManager.ClearType.CLEAR,
+                    isRunning = clearProgress?.isRunning ?: false,
+                    collectedItems = clearProgress?.collectedItems ?: 0,
+                    deletedItems = clearProgress?.deletedItems ?: 0,
+                    loadedPages = clearProgress?.loadedPages ?: 0,
+                    isPaginating = (clearProgress?.isRunning ?: false) && clearProgress?.totalPages == 0
+                )
+            }
+        }
 
         val topicState = remember(canEditTopic, roomTopic, roomType) {
             val topic = roomTopic
@@ -136,25 +164,57 @@ class RoomDetailsPresenter(
         val snackbarDispatcher = LocalSnackbarDispatcher.current
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
 
+        fun handleClearMessages() {
+            if (!clearProgressState.isRunning) {
+                showConfirmClearDialog = false
+                LongTaskManager.runTask(
+                    before = { room.incrementTasks() },
+                    task = { room.clearRoom() },
+                    after = { room.completeLongTask() },
+                    roomId = room.roomId.value,
+                    clearType = LongTaskManager.ClearType.CLEAR
+                )
+            }
+        }
+
         fun handleEvents(event: RoomDetailsEvent) {
             when (event) {
                 is RoomDetailsEvent.LeaveRoom -> {
-                    leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(room.roomId, needsConfirmation = event.needsConfirmation))
+                    leaveRoomState.eventSink(LeaveRoom(room.roomId, needsConfirmation = event.needsConfirmation))
                 }
+
                 RoomDetailsEvent.MuteNotification -> {
                     scope.launch(dispatchers.io) {
                         notificationSettingsService.muteRoom(room.roomId)
                     }
                 }
+
                 RoomDetailsEvent.UnmuteNotification -> {
                     scope.launch(dispatchers.io) {
                         notificationSettingsService.unmuteRoom(room.roomId, isEncrypted, room.isOneToOne)
                     }
                 }
+
                 is RoomDetailsEvent.SetFavorite -> scope.setFavorite(event.isFavorite)
                 is RoomDetailsEvent.CopyToClipboard -> {
                     clipboardHelper.copyPlainText(event.text)
                     snackbarDispatcher.post(SnackbarMessage(CommonStrings.common_copied_to_clipboard))
+                }
+
+                is RoomDetailsEvent.ShowConfirmClearDialog -> {
+                    showConfirmClearDialog = event.show
+                }
+
+                RoomDetailsEvent.ClearMessages -> {
+                    handleClearMessages()
+                }
+
+                RoomDetailsEvent.ClickWhenPaginate -> {
+                    snackbarDispatcher.post(SnackbarMessage(R.string.screen_room_details_do_nothing))
+                }
+
+                RoomDetailsEvent.StopClearMessages -> {
+                    LongTaskManager.update(room.roomId.value) { it.copy(isRunning = false) }
                 }
             }
         }
@@ -204,8 +264,29 @@ class RoomDetailsPresenter(
             canReportRoom = canReportRoom,
             isTombstoned = roomInfo.successorRoom != null,
             showDebugInfo = isDeveloperModeEnabled,
+            userEventPermissions = userEventPermissions,
+            showConfirmClearDialog = showConfirmClearDialog,
+            clearProgressState = clearProgressState,
             eventSink = ::handleEvents,
         )
+    }
+
+    @Composable
+    private fun userEventPermissions(roomInfo: RoomInfo): State<UserEventPermissions> {
+        val key = if (roomInfo.privilegedCreatorRole && roomInfo.creators.contains(room.sessionId)) {
+            Long.MAX_VALUE
+        } else {
+            roomInfo.roomPowerLevels?.hashCode() ?: 0L
+        }
+        return produceState(UserEventPermissions.DEFAULT, key1 = key) {
+            value = UserEventPermissions(
+                canSendMessage = room.canSendMessage(type = MessageEventType.RoomMessage).getOrElse { true },
+                canSendReaction = room.canSendMessage(type = MessageEventType.Reaction).getOrElse { true },
+                canRedactOwn = room.canRedactOwn().getOrElse { false },
+                canRedactOther = room.canRedactOther().getOrElse { false },
+                canPinUnpin = room.canPinUnpin().getOrElse { false },
+            )
+        }
     }
 
     @Composable

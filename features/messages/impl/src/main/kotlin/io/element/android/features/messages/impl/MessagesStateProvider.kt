@@ -7,6 +7,7 @@
 
 package io.element.android.features.messages.impl
 
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.api.timeline.voicemessages.composer.aVoiceMessageComposerState
@@ -44,6 +45,7 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
+import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
@@ -135,12 +137,16 @@ fun aMessagesState(
     showReinvitePrompt = showReinvitePrompt,
     enableTextFormatting = true,
     roomCallState = roomCallState,
-    appName = "Element",
+    appName = "WanChat",
     pinnedMessagesBannerState = pinnedMessagesBannerState,
     dmUserVerificationState = dmUserVerificationState,
     roomMemberModerationState = roomMemberModerationState,
     successorRoom = successorRoom,
+    selectedEvents = SnapshotStateMap(),
+    isMultiSelect = false,
+    autoDeleteState = AutoDeleteState.defaultState,
     eventSink = eventSink,
+    clearProgress = null
 )
 
 fun aRoomMemberModerationState(

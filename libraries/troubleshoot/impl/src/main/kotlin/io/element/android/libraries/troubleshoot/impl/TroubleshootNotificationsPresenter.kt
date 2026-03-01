@@ -33,13 +33,14 @@ class TroubleshootNotificationsPresenter(
     override fun present(): TroubleshootNotificationsState {
         val coroutineScope = rememberCoroutineScope()
         LaunchedEffect(Unit) {
-            troubleshootTestSuite.start(this)
+            //troubleshootTestSuite.start(this)//lj:不放在这里了
         }
 
         val testSuiteState by troubleshootTestSuite.state.collectAsState()
         fun handleEvents(event: TroubleshootNotificationsEvents) {
             when (event) {
                 TroubleshootNotificationsEvents.StartTests -> coroutineScope.launch {
+                    troubleshootTestSuite.start(this)
                     troubleshootTestSuite.runTestSuite(this)
                 }
                 is TroubleshootNotificationsEvents.QuickFix -> coroutineScope.launch {

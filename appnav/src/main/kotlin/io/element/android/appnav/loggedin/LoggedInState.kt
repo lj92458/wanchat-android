@@ -16,4 +16,5 @@ data class LoggedInState(
     val forceNativeSlidingSyncMigration: Boolean,
     val appName: String,
     val eventSink: (LoggedInEvents) -> Unit,
+    val ntfyAction: NtfyAction?,
 )

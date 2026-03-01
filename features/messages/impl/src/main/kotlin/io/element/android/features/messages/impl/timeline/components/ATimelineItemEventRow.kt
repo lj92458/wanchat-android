@@ -8,6 +8,8 @@
 package io.element.android.features.messages.impl.timeline.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.snapshots.SnapshotStateMap
+import androidx.compose.runtime.snapshots.SnapshotStateSet
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.aTimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
@@ -29,8 +31,8 @@ internal fun ATimelineItemEventRow(
     event = event,
     timelineMode = timelineMode,
     timelineRoomInfo = timelineRoomInfo,
-    renderReadReceipts = renderReadReceipts,
     timelineProtectionState = timelineProtectionState,
+    renderReadReceipts = renderReadReceipts,
     isLastOutgoingMessage = isLastOutgoingMessage,
     displayThreadSummaries = displayThreadSummaries,
     onEventClick = {},
@@ -44,5 +46,6 @@ internal fun ATimelineItemEventRow(
     onMoreReactionsClick = {},
     onReadReceiptClick = {},
     onSwipeToReply = {},
+    selectedEvents = SnapshotStateMap(),
     eventSink = {},
 )

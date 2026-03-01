@@ -9,6 +9,7 @@ package io.element.android.features.messages.impl
 
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState.AutoDeleteEnum
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.api.user.MatrixUser
 
@@ -19,6 +20,12 @@ sealed interface MessagesEvents {
     data class OnUserClicked(val user: MatrixUser) : MessagesEvents
     data object Dismiss : MessagesEvents
     data object MarkAsFullyReadAndExit : MessagesEvents
+
+    // MultiSelect  ====================================================================================
+    data object ToggleMultiSelectMode : MessagesEvents // 开启或关闭多选模式
+    data class ToggleEventSelection(val event: TimelineItem.Event) : MessagesEvents // 选择该条消息，或不选该条消息
+    data object MultiDelete : MessagesEvents
+    data class AutoDeleteStateChange(var autoDeleteEnum: AutoDeleteEnum) : MessagesEvents
 }
 
 enum class InviteDialogAction {

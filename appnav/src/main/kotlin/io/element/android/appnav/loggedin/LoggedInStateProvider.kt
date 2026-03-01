@@ -24,7 +24,7 @@ fun aLoggedInState(
     showSyncSpinner: Boolean = false,
     pusherRegistrationState: AsyncData<Unit> = AsyncData.Uninitialized,
     forceNativeSlidingSyncMigration: Boolean = false,
-    appName: String = "Element X",
+    appName: String = "WanChat",
 ) = LoggedInState(
     showSyncSpinner = showSyncSpinner,
     pusherRegistrationState = pusherRegistrationState,
@@ -32,4 +32,5 @@ fun aLoggedInState(
     forceNativeSlidingSyncMigration = forceNativeSlidingSyncMigration,
     appName = appName,
     eventSink = {},
+    ntfyAction = null,
 )

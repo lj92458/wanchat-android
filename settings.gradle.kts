@@ -30,12 +30,13 @@ dependencyResolutionManagement {
         flatDir {
             dirs("libraries/matrix/libs")
         }
+        mavenLocal() //有什么副作用吗？
     }
 }
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
-rootProject.name = "ElementX"
+rootProject.name = "WanChat"
 include(":app")
 include(":appnav")
 include(":appconfig")

@@ -34,6 +34,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -92,6 +93,7 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.swipe.SwipeableActionsState
 import io.element.android.libraries.designsystem.swipe.rememberSwipeableActionsState
 import io.element.android.libraries.designsystem.text.toPx
+import io.element.android.libraries.designsystem.theme.components.Checkbox
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.EventId
@@ -152,6 +154,9 @@ fun TimelineItemEventRow(
     onMoreReactionsClick: (eventId: TimelineItem.Event) -> Unit,
     onReadReceiptClick: (event: TimelineItem.Event) -> Unit,
     onSwipeToReply: () -> Unit,
+    onToggleItemSelection: (TimelineItem.Event) -> Unit = {},
+    isMultiSelect: Boolean = false,
+    selectedEvents: SnapshotStateMap<TimelineItem.Event, Boolean>,
     eventSink: (TimelineEvents.EventFromTimelineItem) -> Unit,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit = { contentModifier, onContentLayoutChange ->
@@ -195,105 +200,114 @@ fun TimelineItemEventRow(
         val inReplyToEventId = event.inReplyTo?.eventId() ?: return
         inReplyToClick(inReplyToEventId)
     }
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        if (event.groupPosition.isNew()) {
-            Spacer(modifier = Modifier.height(16.dp))
-        } else {
-            Spacer(modifier = Modifier.height(2.dp))
+    Row() {
+        if (isMultiSelect) {// 复选框，同时选中多条消息
+            Checkbox(
+                checked = selectedEvents.getOrDefault(event, false),
+                onCheckedChange = { if (event.eventId != null) onToggleItemSelection(event) },
+            )
         }
-        val canReply = timelineRoomInfo.userHasPermissionToSendMessage && event.canBeRepliedTo
-        if (canReply) {
-            val state: SwipeableActionsState = rememberSwipeableActionsState()
-            val offset = state.offset.floatValue
-            val swipeThresholdPx = 40.dp.toPx()
-            val thresholdCrossed = abs(offset) > swipeThresholdPx
-            SwipeSensitivity(3f) {
-                Box(Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.matchParentSize()) {
-                        ReplySwipeIndicator({ offset / 120 })
-                    }
-                    TimelineItemEventRowContent(
-                        event = event,
-                        timelineMode = timelineMode,
-                        timelineProtectionState = timelineProtectionState,
-                        timelineRoomInfo = timelineRoomInfo,
-                        interactionSource = interactionSource,
-                        onContentClick = onContentClick,
-                        onLongClick = onLongClick,
-                        inReplyToClick = ::inReplyToClick,
-                        onUserDataClick = ::onUserDataClick,
-                        onReactionClick = { emoji -> onReactionClick(emoji, event) },
-                        onReactionLongClick = { emoji -> onReactionLongClick(emoji, event) },
-                        onMoreReactionsClick = { onMoreReactionsClick(event) },
-                        modifier = Modifier
-                            .absoluteOffset { IntOffset(x = offset.roundToInt(), y = 0) }
-                            .draggable(
-                                orientation = Orientation.Horizontal,
-                                enabled = !state.isResettingOnRelease,
-                                onDragStopped = {
-                                    coroutineScope.launch {
-                                        if (thresholdCrossed) {
-                                            onSwipeToReply()
-                                        }
-                                        state.resetOffset()
-                                    }
-                                },
-                                state = state.draggableState,
-                            ),
-                        eventSink = eventSink,
-                        eventContentView = eventContentView,
-                    )
-                }
+        Column(modifier = modifier.fillMaxWidth()) {
+            if (event.groupPosition.isNew()) {
+                Spacer(modifier = Modifier.height(16.dp))
+            } else {
+                Spacer(modifier = Modifier.height(2.dp))
             }
-        } else {
-            TimelineItemEventRowContent(
-                event = event,
-                timelineMode = timelineMode,
-                timelineProtectionState = timelineProtectionState,
-                timelineRoomInfo = timelineRoomInfo,
-                interactionSource = interactionSource,
-                onContentClick = onContentClick,
-                onLongClick = onLongClick,
-                inReplyToClick = ::inReplyToClick,
-                onUserDataClick = ::onUserDataClick,
-                onReactionClick = { emoji -> onReactionClick(emoji, event) },
-                onReactionLongClick = { emoji -> onReactionLongClick(emoji, event) },
-                onMoreReactionsClick = { onMoreReactionsClick(event) },
-                eventSink = eventSink,
-                eventContentView = eventContentView,
-            )
-        }
-
-        if (displayThreadSummaries && timelineMode !is Timeline.Mode.Thread && event.threadInfo is TimelineItemThreadInfo.ThreadRoot) {
-            ThreadSummaryView(
-                modifier = if (event.isMine) {
-                    Modifier.align(Alignment.End).padding(end = 16.dp)
-                } else {
-                    if (timelineRoomInfo.isDm) Modifier else Modifier.padding(start = 16.dp)
-                }.padding(top = 2.dp),
-                threadSummary = event.threadInfo.summary,
-                latestEventText = event.threadInfo.latestEventText,
-                isOutgoing = event.isMine,
-                onClick = {
-                    event.eventId?.let {
-                        eventSink(TimelineEvents.OpenThread(it.toThreadId(), null))
+            val canReply = timelineRoomInfo.userHasPermissionToSendMessage && event.canBeRepliedTo
+            if (canReply) {
+                val state: SwipeableActionsState = rememberSwipeableActionsState()
+                val offset = state.offset.floatValue
+                val swipeThresholdPx = 40.dp.toPx()
+                val thresholdCrossed = abs(offset) > swipeThresholdPx
+                SwipeSensitivity(3f) {
+                    Box(Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.matchParentSize()) {
+                            ReplySwipeIndicator({ offset / 120 })
+                        }
+                        TimelineItemEventRowContent(
+                            event = event,
+                            timelineMode = timelineMode,
+                            timelineProtectionState = timelineProtectionState,
+                            timelineRoomInfo = timelineRoomInfo,
+                            interactionSource = interactionSource,
+                            onContentClick = onContentClick,
+                            onLongClick = onLongClick,
+                            inReplyToClick = ::inReplyToClick,
+                            onUserDataClick = ::onUserDataClick,
+                            onReactionClick = { emoji -> onReactionClick(emoji, event) },
+                            onReactionLongClick = { emoji -> onReactionLongClick(emoji, event) },
+                            onMoreReactionsClick = { onMoreReactionsClick(event) },
+                            modifier = Modifier
+                                .absoluteOffset { IntOffset(x = offset.roundToInt(), y = 0) }
+                                .draggable(
+                                    orientation = Orientation.Horizontal,
+                                    enabled = !state.isResettingOnRelease,
+                                    onDragStopped = {
+                                        coroutineScope.launch {
+                                            if (thresholdCrossed) {
+                                                onSwipeToReply()
+                                            }
+                                            state.resetOffset()
+                                        }
+                                    },
+                                    state = state.draggableState,
+                                ),
+                            eventSink = eventSink,
+                            eventContentView = eventContentView,
+                        )
                     }
                 }
+            } else {
+                TimelineItemEventRowContent(
+                    event = event,
+                    timelineMode = timelineMode,
+                    timelineProtectionState = timelineProtectionState,
+                    timelineRoomInfo = timelineRoomInfo,
+                    interactionSource = interactionSource,
+                    onContentClick = onContentClick,
+                    onLongClick = onLongClick,
+                    inReplyToClick = ::inReplyToClick,
+                    onUserDataClick = ::onUserDataClick,
+                    onReactionClick = { emoji -> onReactionClick(emoji, event) },
+                    onReactionLongClick = { emoji -> onReactionLongClick(emoji, event) },
+                    onMoreReactionsClick = { onMoreReactionsClick(event) },
+                    eventSink = eventSink,
+                    eventContentView = eventContentView,
+                )
+            }
+
+            if (displayThreadSummaries && timelineMode !is Timeline.Mode.Thread && event.threadInfo is TimelineItemThreadInfo.ThreadRoot) {
+                ThreadSummaryView(
+                    modifier = if (event.isMine) {
+                        Modifier
+                            .align(Alignment.End)
+                            .padding(end = 16.dp)
+                    } else {
+                        if (timelineRoomInfo.isDm) Modifier else Modifier.padding(start = 16.dp)
+                    }.padding(top = 2.dp),
+                    threadSummary = event.threadInfo.summary,
+                    latestEventText = event.threadInfo.latestEventText,
+                    isOutgoing = event.isMine,
+                    onClick = {
+                        event.eventId?.let {
+                            eventSink(TimelineEvents.OpenThread(it.toThreadId(), null))
+                        }
+                    }
+                )
+            }
+
+            // Read receipts / Send state
+            TimelineItemReadReceiptView(
+                state = ReadReceiptViewState(
+                    sendState = event.localSendState,
+                    isLastOutgoingMessage = isLastOutgoingMessage,
+                    receipts = event.readReceiptState.receipts,
+                ),
+                renderReadReceipts = renderReadReceipts,
+                onReadReceiptsClick = { onReadReceiptClick(event) },
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
-
-        // Read receipts / Send state
-        TimelineItemReadReceiptView(
-            state = ReadReceiptViewState(
-                sendState = event.localSendState,
-                isLastOutgoingMessage = isLastOutgoingMessage,
-                receipts = event.readReceiptState.receipts,
-            ),
-            renderReadReceipts = renderReadReceipts,
-            onReadReceiptsClick = { onReadReceiptClick(event) },
-            modifier = Modifier.padding(top = 4.dp)
-        )
     }
 }
 
@@ -316,7 +330,7 @@ private fun ThreadSummaryView(
                 .background(MessageEventBubbleDefaults.backgroundBubbleColor(isOutgoing))
                 .niceClickable(onClick)
                 .padding(horizontal = 12.dp, vertical = 10.dp)
-                .widthIn(max = (maxWidth - 24.dp) * MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO),
+                .widthIn(max = (this.maxWidth - 24.dp) * MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -832,25 +846,27 @@ internal fun TimelineItemEventRowWithThreadSummaryPreview() = ElementPreview {
                     groupPosition = TimelineItemGroupPosition.First,
                     threadInfo = TimelineItemThreadInfo.ThreadRoot(
                         latestEventText = "This is the latest message in the thread",
-                        summary = ThreadSummary(AsyncData.Success(
-                            EmbeddedEventInfo(
-                                eventOrTransactionId = EventOrTransactionId.Event(EventId("\$event-id")),
-                                content = MessageContent(
-                                    body = "This is the latest message in the thread",
-                                    inReplyTo = null,
-                                    isEdited = false,
-                                    threadInfo = null,
-                                    type = TextMessageType("This is the latest message in the thread", null)
-                                ),
-                                senderId = UserId("@user:id"),
-                                senderProfile = ProfileTimelineDetails.Ready(
-                                    displayName = "Alice",
-                                    avatarUrl = null,
-                                    displayNameAmbiguous = false,
-                                ),
-                                timestamp = 0L,
-                            )
-                        ), numberOfReplies = 20L)
+                        summary = ThreadSummary(
+                            AsyncData.Success(
+                                EmbeddedEventInfo(
+                                    eventOrTransactionId = EventOrTransactionId.Event(EventId("\$event-id")),
+                                    content = MessageContent(
+                                        body = "This is the latest message in the thread",
+                                        inReplyTo = null,
+                                        isEdited = false,
+                                        threadInfo = null,
+                                        type = TextMessageType("This is the latest message in the thread", null)
+                                    ),
+                                    senderId = UserId("@user:id"),
+                                    senderProfile = ProfileTimelineDetails.Ready(
+                                        displayName = "Alice",
+                                        avatarUrl = null,
+                                        displayNameAmbiguous = false,
+                                    ),
+                                    timestamp = 0L,
+                                )
+                            ), numberOfReplies = 20L
+                        )
                     )
                 ),
                 displayThreadSummaries = true,

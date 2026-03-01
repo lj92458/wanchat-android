@@ -12,6 +12,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.room.custominfo.RoomCustomInfo
 import io.element.android.libraries.matrix.api.room.draft.ComposerDraft
 import io.element.android.libraries.matrix.api.room.powerlevels.RoomPowerLevelsValues
 import io.element.android.libraries.matrix.api.room.tombstone.PredecessorRoom
@@ -53,11 +54,13 @@ interface BaseRoom : Closeable {
      * A flow that emits the current [RoomInfo] state.
      */
     val roomInfoFlow: StateFlow<RoomInfo>
+    val roomCustomInfoFlow: StateFlow<RoomCustomInfo>
 
     /**
      * Get the latest room info we have received from the SDK stream.
      */
     fun info(): RoomInfo = roomInfoFlow.value
+    fun customInfo(): RoomCustomInfo = roomCustomInfoFlow.value
 
     fun predecessorRoom(): PredecessorRoom?
 
@@ -255,6 +258,5 @@ interface BaseRoom : Closeable {
      * Destroy the room and release all resources associated to it.
      */
     fun destroy()
-
     override fun close() = destroy()
 }

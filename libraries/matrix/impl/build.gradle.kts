@@ -27,6 +27,7 @@ dependencies {
     } else {
         debugImplementation(libs.matrix.sdk)
     }
+    implementation(libs.kotlin.reflect)
     implementation(projects.appconfig)
     implementation(projects.libraries.androidutils)
     implementation(projects.libraries.di)

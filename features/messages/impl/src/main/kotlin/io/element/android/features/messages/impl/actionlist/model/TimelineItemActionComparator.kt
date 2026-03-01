@@ -13,6 +13,7 @@ class TimelineItemActionComparator : Comparator<TimelineItemAction> {
     // See order in https://www.figma.com/design/ux3tYoZV9WghC7hHT9Fhk0/Compound-iOS-Components?node-id=2946-2392
     @VisibleForTesting
     val orderedList = listOf(
+        TimelineItemAction.MultiSelect,
         TimelineItemAction.EndPoll,
         TimelineItemAction.ViewInTimeline,
         TimelineItemAction.Reply,

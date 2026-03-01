@@ -7,6 +7,7 @@
 
 package io.element.android.x.di
 
+import com.bumble.appyx.core.integrationpoint.activitystarter.ActivityStarter
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
 import io.element.android.features.api.MigrationEntryPoint

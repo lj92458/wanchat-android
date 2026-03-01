@@ -32,13 +32,13 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
  * Year of the version on 2 digits.
  * Do not update this value. it is updated by the release script.
  */
-private const val versionYear = 25
+private const val versionYear = 26
 
 /**
  * Month of the version on 2 digits. Value must be in [1,12].
  * Do not update this value. it is updated by the release script.
  */
-private const val versionMonth = 11
+private const val versionMonth = 2
 
 /**
  * Release number in the month. Value must be in [0,99].
@@ -77,7 +77,7 @@ object Versions {
     /**
      * Minimum SDK version for FOSS builds.
      */
-    private const val MIN_SDK_FOSS = 24
+    private const val MIN_SDK_FOSS = 24 //android7
 
     /**
      * Minimum SDK version for Enterprise builds.

@@ -51,17 +51,17 @@ internal fun RoundIconPreview() {
     }
 }
 
-@Preview
-@Composable
-internal fun MonochromeIconPreview() {
-    Box(
-        modifier = Modifier
-            .background(Color(0xFF2F3133)),
-    ) {
-        Image(
-            painter = painterResource(id = R.mipmap.ic_launcher_monochrome),
-            colorFilter = ColorFilter.tint(Color(0xFFC3E0F6)),
-            contentDescription = null
-        )
-    }
-}
+//@Preview
+//@Composable
+//internal fun MonochromeIconPreview() {
+//    Box(
+//        modifier = Modifier
+//            .background(Color(0xFF2F3133)),
+//    ) {
+//        Image(
+//            painter = painterResource(id = R.mipmap.ic_launcher_monochrome),
+//            colorFilter = ColorFilter.tint(Color(0xFFC3E0F6)),
+//            contentDescription = null
+//        )
+//    }
+//}

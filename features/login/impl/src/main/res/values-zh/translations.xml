@@ -44,7 +44,7 @@
   <string name="screen_onboarding_sign_up">"创建账户"</string>
   <string name="screen_onboarding_welcome_message">"欢迎使用 %1$s，快而简约的消息应用。"</string>
   <string name="screen_onboarding_welcome_subtitle">"欢迎使用 %1$s，速度与简洁的极致。"</string>
-  <string name="screen_onboarding_welcome_title">"融入您的 Element"</string>
+  <string name="screen_onboarding_welcome_title">"融入您的 万信"</string>
   <string name="screen_qr_code_login_connecting_subtitle">"建立安全连接"</string>
   <string name="screen_qr_code_login_connection_note_secure_state_description">"无法与新设备建立安全连接。您现有的设备仍然安全，无需担心。"</string>
   <string name="screen_qr_code_login_connection_note_secure_state_list_header">"现在怎么办？"</string>

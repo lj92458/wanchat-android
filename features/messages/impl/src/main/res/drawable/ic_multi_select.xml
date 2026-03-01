@@ -1,0 +1,43 @@
+<!--
+  ~ Copyright 2025 New Vector Ltd.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 三条横线 + 左边小方块 -->
+    <!-- 第一行 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,5h2v2H3z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M7,6h10v1H7z" />
+
+    <!-- 第二行 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,11h2v2H3z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M7,12h10v1H7z" />
+
+    <!-- 第三行 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,17h2v2H3z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M7,18h10v1H7z" />
+
+    <!-- 右下角对勾 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M16,18l2,2l4,-4l-1.4,-1.4L18,18.2l-0.6,-0.6z" />
+</vector>
