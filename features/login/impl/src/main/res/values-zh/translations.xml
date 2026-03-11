@@ -13,6 +13,8 @@
   <string name="screen_change_account_provider_other">"其他"</string>
   <string name="screen_change_account_provider_subtitle">"使用其他账户提供商，例如您自己的私人服务器或工作账户。"</string>
   <string name="screen_change_account_provider_title">"更改账户提供方"</string>
+  <string name="screen_account_provider_form_domain">"请输入域名，例如："</string>
+  <string name="screen_account_provider_signup_at">"还没有账号？去%s或%s注册"</string>
   <string name="screen_change_server_error_element_pro_required_action_android">"Google Play"</string>
   <string name="screen_change_server_error_element_pro_required_message">"%1$s 需要 Element Pro 应用。请从应用商店下载。"</string>
   <string name="screen_change_server_error_element_pro_required_title">"需要 Element Pro 版"</string>

@@ -94,10 +94,10 @@ fun LoggedInView(
                 ntfyAction.confirm(DialogResult.Ok, state)
                 okCallback()
             },
-            cancelText = "稍后询问",
+            cancelText = stringResource(R.string.loggedin_ntfy_dialog_latter),
             onCancelClick = { ntfyAction.confirm(DialogResult.Latter, state) },
             onDismiss = {},
-            thirdButtonText = "禁止",
+            thirdButtonText = stringResource(R.string.loggedin_ntfy_dialog_forbids),
             onThirdButtonClick = { ntfyAction.confirm(DialogResult.Never, state) },
         )
     }
@@ -105,15 +105,15 @@ fun LoggedInView(
     when (state.ntfyAction) {
         null -> Unit
         //1.安装未知应用
-        is NtfyAction.RequestInstallUnknownAppsPermission -> Confirm("步骤1/5：请允许“安装未知应用”，否则无法使用插件", state.ntfyAction)
+        is NtfyAction.RequestInstallUnknownAppsPermission -> Confirm(stringResource(R.string.loggedin_ntfy_dialog_step1), state.ntfyAction)
         //2.下载安装ntfy
-        is NtfyAction.NtfyDownloadInstall -> Confirm("步骤2/5：您没有安装ntfy，无法收到消息提醒。现在为您安装", state.ntfyAction)
+        is NtfyAction.NtfyDownloadInstall -> Confirm(stringResource(R.string.loggedin_ntfy_dialog_step2), state.ntfyAction)
         //3.索要通知权限
-        is NtfyAction.RequestNotificationPermission -> Confirm("步骤3/5：请开启“通知”权限，否则无法收到消息提醒", state.ntfyAction)
+        is NtfyAction.RequestNotificationPermission -> Confirm(stringResource(R.string.loggedin_ntfy_dialog_step3), state.ntfyAction)
         //4.启动ntfy。如果有必要，就打开“排查通知问题”页面
         is NtfyAction.Troubleshoot ->
             if (state.ntfyAction.needOpenTroubleshoot) {
-                Confirm("步骤4/5：未知的故障，导致您收不到通知(请确保ntfy已运行)。现在排查？", state.ntfyAction) {
+                Confirm(stringResource(R.string.loggedin_ntfy_dialog_step4), state.ntfyAction) {
                     coroutineScope.launch {
                         delay(2000)
                         navigateToNotificationTroubleshoot()
@@ -125,17 +125,10 @@ fun LoggedInView(
                 }
             }
 
-        //索要ntfy的“关联启动”权限.(不在队列中执行，由其它队列元素负责调用)
-        is NtfyAction.RequestAssociatedStartPermission -> Confirm("步骤4/6：请允许“关联启动”，否则无法为您启动ntfy，导致您收不到通知提醒", state.ntfyAction)
-        // 5.忽略电池优化，允许高耗电
-        is NtfyAction.IgnoreBatteryOptimization ->
-            Confirm(
-                """
-                         步骤5/5：请允许ntfy忽略电池优化、常驻后台、高耗电。(也可在ntfy首页设置)。
-                         注意：某些手机需要点击"按钮所在的一整行"，才能真正进入界面。
-                        """.trimIndent(),
-                state.ntfyAction
-            )
+        //5.索要ntfy的“关联启动”权限.(不在队列中执行，由其它队列元素负责调用)
+        is NtfyAction.RequestAssociatedStartPermission -> Confirm(stringResource(R.string.loggedin_ntfy_dialog_step5), state.ntfyAction)
+        // 6.忽略电池优化，允许高耗电
+        is NtfyAction.IgnoreBatteryOptimization -> Confirm(stringResource(R.string.loggedin_ntfy_dialog_step6), state.ntfyAction)
     }
 }
 

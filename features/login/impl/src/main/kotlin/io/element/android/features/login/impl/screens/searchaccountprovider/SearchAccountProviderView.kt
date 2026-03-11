@@ -84,10 +84,10 @@ fun SearchAccountProviderView(
     ) { padding ->
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .imePadding()
-                .padding(padding)
-                .consumeWindowInsets(padding)
+                    .fillMaxSize()
+                    .imePadding()
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
         ) {
             LazyColumn(modifier = Modifier.fillMaxWidth(), state = rememberLazyListState()) {
                 item {
@@ -95,14 +95,15 @@ fun SearchAccountProviderView(
                         modifier = Modifier.padding(top = 16.dp, bottom = 40.dp, start = 16.dp, end = 16.dp),
                         iconStyle = BigIcon.Style.Default(CompoundIcons.Search()),
                         title = stringResource(id = R.string.screen_account_provider_form_title),
-                        subTitle = stringResource(id = R.string.screen_account_provider_form_subtitle)
+                        subTitle = stringResource(id = R.string.screen_account_provider_form_subtitle) + "\n"
+                            + stringResource(id = R.string.screen_account_provider_form_domain) + "\n"
                             + """
-                            请输入域名，例如：
+                                :
                                     unredacted.org
                                     xmr.se
                                     tchncs.de
-                            还没有账号？去app.cinny.in或hydrogen.element.io注册
-                        """.trimIndent(),
+                        """.trimIndent() + "\n"
+                            + stringResource(id = R.string.screen_account_provider_signup_at, "app.cinny.in", "app.element.io"),
                     )
                 }
                 item {
@@ -113,10 +114,10 @@ fun SearchAccountProviderView(
                         value = userInputState,
                         // readOnly = isLoading,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                            .onTabOrEnterKeyFocusNext(focusManager)
-                            .testTag(TestTags.changeServerServer),
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                                .onTabOrEnterKeyFocusNext(focusManager)
+                                .testTag(TestTags.changeServerServer),
                         onValueChange = {
                             userInputState = it
                             eventSink(SearchAccountProviderEvents.UserInput(it))
@@ -152,6 +153,7 @@ fun SearchAccountProviderView(
                     is AsyncData.Failure -> {
                         // Ignore errors (let the user type more chars)
                     }
+
                     is AsyncData.Loading -> {
                         item {
                             Box(
@@ -164,6 +166,7 @@ fun SearchAccountProviderView(
                             }
                         }
                     }
+
                     is AsyncData.Success -> {
                         items(state.userInputResult.data) { homeserverData ->
                             val item = homeserverData.toAccountProvider()
@@ -175,6 +178,7 @@ fun SearchAccountProviderView(
                             )
                         }
                     }
+
                     AsyncData.Uninitialized -> Unit
                 }
                 item {

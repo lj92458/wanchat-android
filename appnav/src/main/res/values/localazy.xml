@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="banner_migrate_to_native_sliding_sync_action">"Log Out &amp; Upgrade"</string>
-  <string name="banner_migrate_to_native_sliding_sync_app_force_logout_title">"%1$s no longer supports the old protocol. Please log out and log back in to continue using the app."</string>
-  <string name="banner_migrate_to_native_sliding_sync_force_logout_title">"Your homeserver no longer supports the old protocol. Please log out and log back in to continue using the app."</string>
+    <string name="banner_migrate_to_native_sliding_sync_action">"Log Out &amp; Upgrade"</string>
+    <string name="banner_migrate_to_native_sliding_sync_app_force_logout_title">"%1$s no longer supports the old protocol. Please log out and log back in to continue using the app."</string>
+    <string name="banner_migrate_to_native_sliding_sync_force_logout_title">"Your homeserver no longer supports the old protocol. Please log out and log back in to continue using the app."</string>
+    <string name="loggedin_ntfy_dialog_latter">"Set up later"</string>
+    <string name="loggedin_ntfy_dialog_forbids">"Forbids"</string>
+    <string name="loggedin_ntfy_dialog_step1">"Step 1/6: Please allow 'install unknown applications', otherwise the plugin cannot be used."</string>
+    <string name="loggedin_ntfy_dialog_step2">"Step 2/6: You have not installed ntfy and cannot receive message alerts. Now we will install it for you."</string>
+    <string name="loggedin_ntfy_dialog_step3">"Step 3/6: Please enable the "Notification" permission, otherwise you will not receive message reminders."</string>
+    <string name="loggedin_ntfy_dialog_step4">"Step 4/6: Unknown malfunction causing you to not receive notifications (please ensure that ntfy is running). Now investigate?"</string>
+    <string name="loggedin_ntfy_dialog_step5">"Step 5/6: Please allow 'associated startup', otherwise ntfy cannot be launched for you, resulting in you not receiving notification reminders."</string>
+    <string name="loggedin_ntfy_dialog_step6">"Step 6/6: Please allow ntfy to ignore battery optimization, background residency, and high power consumption. \n Note: Some phones require clicking on the entire line where the button is located to truly enter the interface."</string>
 </resources>

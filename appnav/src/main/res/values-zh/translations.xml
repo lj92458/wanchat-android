@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="banner_migrate_to_native_sliding_sync_action">"登出并升级"</string>
-  <string name="banner_migrate_to_native_sliding_sync_app_force_logout_title">"%1$s 不再支持旧协议。请注销并重新登录以继续使用该应用程序。"</string>
-  <string name="banner_migrate_to_native_sliding_sync_force_logout_title">"您的服务器不再支持旧协议。请登出并重新登录以继续使用此应用。"</string>
+    <string name="banner_migrate_to_native_sliding_sync_action">"登出并升级"</string>
+    <string name="banner_migrate_to_native_sliding_sync_app_force_logout_title">"%1$s 不再支持旧协议。请注销并重新登录以继续使用该应用程序。"</string>
+    <string name="banner_migrate_to_native_sliding_sync_force_logout_title">"您的服务器不再支持旧协议。请登出并重新登录以继续使用此应用。"</string>
+    <string name="loggedin_ntfy_dialog_latter">"稍后设置"</string>
+    <string name="loggedin_ntfy_dialog_forbids">"禁止"</string>
+    <string name="loggedin_ntfy_dialog_step1">"步骤1/6：请允许“安装未知应用”，否则无法使用插件"</string>
+    <string name="loggedin_ntfy_dialog_step2">"步骤2/6：您没有安装ntfy，无法收到消息提醒。现在为您安装"</string>
+    <string name="loggedin_ntfy_dialog_step3">"步骤3/6：请开启“通知”权限，否则无法收到消息提醒"</string>
+    <string name="loggedin_ntfy_dialog_step4">"步骤4/6：未知的故障，导致您收不到通知(请确保ntfy已运行)。现在排查？"</string>
+    <string name="loggedin_ntfy_dialog_step5">"步骤5/6：请允许“关联启动”，否则无法为您启动ntfy，导致您收不到通知提醒"</string>
+    <string name="loggedin_ntfy_dialog_step6">"步骤6/6：请允许ntfy忽略电池优化、常驻后台、高耗电。\n注意：某些手机需要点击"按钮所在的一整行"，才能真正进入界面。"</string>
 </resources>

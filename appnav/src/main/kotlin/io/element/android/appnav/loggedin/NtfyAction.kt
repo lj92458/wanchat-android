@@ -75,22 +75,11 @@ sealed class NtfyAction(
     /** 启动ntfy，如果启动失败，就说明没权限，就设置“关联启动”权限 */
     fun tryStartApp(packageName: String, activityFullName: String, loggedInState: LoggedInState) {
         try {
-            //是应该启动service还是activity？最好是service。例如：context.startForegroundService(intent)
-            // 但无法启动，因为服务没有公开(mainfest文件中SubscriberService没有写exported="true").
-            //方案1 所以还是回到方案1，启动进程
             val intent = Intent().apply {
                 component = ComponentName(packageName, activityFullName)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            /*
-            //方案2 ，也报错：android.content.ActivityNotFoundException: No Activity found to handle Intent { act=org.unifiedpush.android.connector.RAISE_TO_FOREGROUND pkg=io.heckel.ntfy }
-            val intent = Intent("org.unifiedpush.android.connector.RAISE_TO_FOREGROUND").apply {
-                setPackage(NTFY_PACKAGE_NAME)
-            }
-            //context.sendBroadcast(intent)//或者下面
-            //context.startActivity(intent)
-            */
         } catch (e: SecurityException) {
             Timber.tag("Permission").e(e, "没有权限启动App")
             loggedInState.eventSink(
