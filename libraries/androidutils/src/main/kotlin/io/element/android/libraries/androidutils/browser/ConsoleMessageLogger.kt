@@ -32,11 +32,21 @@ class DefaultConsoleMessageLogger : ConsoleMessageLogger {
             else -> Log.DEBUG
         }
 
+        val levelTag = when (consoleMessage.messageLevel()) {
+            ConsoleMessage.MessageLevel.ERROR -> "[ERROR]"
+            ConsoleMessage.MessageLevel.WARNING -> "[WARN]"
+            ConsoleMessage.MessageLevel.LOG -> "[LOG]"
+            ConsoleMessage.MessageLevel.DEBUG -> "[DEBUG]"
+            ConsoleMessage.MessageLevel.TIP -> "[TIP]"
+        }
+
         val message = buildString {
+            append(levelTag)
+            append(" ")
             append(consoleMessage.sourceId())
             append(":")
             append(consoleMessage.lineNumber())
-            append(" ")
+            append(" - ")
             append(consoleMessage.message())
         }
 
@@ -47,13 +57,7 @@ class DefaultConsoleMessageLogger : ConsoleMessageLogger {
 
         Timber.tag(tag).log(
             priority = priority,
-            message = buildString {
-                append(consoleMessage.sourceId())
-                append(":")
-                append(consoleMessage.lineNumber())
-                append(" ")
-                append(consoleMessage.message())
-            },
+            message = message,
         )
     }
 }

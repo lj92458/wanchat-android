@@ -63,6 +63,7 @@ class DefaultCallWidgetProvider(
         CallWidgetProvider.GetWidgetResult(
             driver = driver,
             url = callUrl,
+            //url = "$callUrl&iceTransportPolicy=relay", //lj: 强制使用relay，节省时间。避免不必要的直连尝试。
         )
     }
 }

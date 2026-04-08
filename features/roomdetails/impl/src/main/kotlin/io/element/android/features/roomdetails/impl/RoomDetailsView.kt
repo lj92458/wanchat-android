@@ -62,6 +62,7 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.avatar.DmAvatars
 import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.button.MainActionButton
+import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
@@ -124,10 +125,14 @@ fun RoomDetailsView(
     leaveRoomView: @Composable () -> Unit,
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
-    //如果正在翻页，就阻止系统的返回键。
+    // 如果正在翻页，就阻止系统的返回键。
     BackHandler(enabled = state.clearProgressState.isPaginating) {
         state.eventSink(RoomDetailsEvent.ClickWhenPaginate)
     }
+
+    // Dialog 状态管理 - 纯 UI 状态直接在 View 中管理
+    var showAlertRunningDialog by remember { mutableStateOf(false) }
+    var showConfirmClearDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
@@ -210,7 +215,7 @@ fun RoomDetailsView(
                 if (state.userEventPermissions.canRedactOwn && state.userEventPermissions.canRedactOther) {
 
                     ListItem(
-                        enabled = !state.clearProgressState.isRunning,
+                        enabled = true,
                         headlineContent = { Text(text = stringResource(R.string.screen_room_details_clear_title)) },
                         supportingContent = {
                             if (state.clearProgressState.isRunning && state.clearProgressState.clearType == LongTaskManager.ClearType.CLEAR) {
@@ -234,15 +239,30 @@ fun RoomDetailsView(
                         ),
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Delete())),
                         style = ListItemStyle.Destructive,
-                        onClick = { state.eventSink(RoomDetailsEvent.ShowConfirmClearDialog(true)) },
+                        onClick = {
+                            if (!state.clearProgressState.isRunning) {
+                                showConfirmClearDialog = true
+                            } else if (state.clearProgressState.clearType != LongTaskManager.ClearType.CLEAR) {
+                                showAlertRunningDialog = true
+                            }
+                        },
                     )
-                    if (state.showConfirmClearDialog) {
+                    if (showAlertRunningDialog) {
+                        AlertDialog(
+                            content = stringResource(R.string.screen_room_details_clear_stop_auto_delete),
+                            onDismiss = { showAlertRunningDialog = false },
+                        )
+                    }
+                    if (showConfirmClearDialog) {
                         ConfirmationDialog(
                             destructiveSubmit = true,
                             title = stringResource(R.string.screen_room_details_clear_title),
                             content = stringResource(R.string.screen_room_details_clear_dialog),
-                            onDismiss = { state.eventSink(RoomDetailsEvent.ShowConfirmClearDialog(false)) },
-                            onSubmitClick = { state.eventSink(RoomDetailsEvent.ClearMessages) },
+                            onDismiss = { showConfirmClearDialog = false },
+                            onSubmitClick = {
+                                showConfirmClearDialog = false
+                                state.eventSink(RoomDetailsEvent.ClearMessages)
+                            },
                         )
                     }
                     //end 弹窗确认

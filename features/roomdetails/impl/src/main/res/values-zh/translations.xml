@@ -67,6 +67,7 @@
   <string name="screen_room_details_clear_running">"进行中 "</string>
   <string name="screen_room_details_clear_stoped">"已停止"</string>
   <string name="screen_room_details_clear_stop">"停止"</string>
+  <string name="screen_room_details_clear_stop_auto_delete">"请先在聊天界面停止“定时删除”，然后才能清空房间。"</string>
   <string name="screen_room_details_pinned_events_row_title">"置顶消息"</string>
   <string name="screen_room_details_profile_row_title">"个人资料"</string>
   <string name="screen_room_details_requests_to_join_title">"申请加入"</string>

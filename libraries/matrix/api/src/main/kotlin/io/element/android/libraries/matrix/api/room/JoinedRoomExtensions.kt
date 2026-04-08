@@ -9,17 +9,16 @@ package io.element.android.libraries.matrix.api.room
 
 import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.matrix.api.core.EventId
-import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.exception.ClientException
 import io.element.android.libraries.matrix.api.exception.ErrorKind
-import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState
 import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
 import io.element.android.libraries.matrix.api.timeline.TimelineForDelete
+import io.element.android.libraries.matrix.api.timeline.item.event.CallNotifyContent
+import io.element.android.libraries.matrix.api.timeline.item.event.LegacyCallInviteContent
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageContent
 import io.element.android.libraries.matrix.api.timeline.item.event.PollContent
 import io.element.android.libraries.matrix.api.timeline.item.event.RedactedContent
 import io.element.android.libraries.matrix.api.timeline.item.event.StickerContent
-import io.element.android.libraries.matrix.api.timeline.item.event.UnableToDecryptContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -127,11 +126,13 @@ suspend fun JoinedRoom.safeRedact(eventId: EventId) {
 
 fun clearProgressIsRunning(roomStr: String) = LongTaskManager.progress.value[roomStr]?.isRunning ?: false
 
-data class UserInfo(var isRead: Boolean = false, var permitRecipient: Boolean = true)
+//data class UserInfo(var permitRecipient: Boolean = true)
 data class RoomRuntimeState(
+    var isRead: Boolean = false,
+    var permitRecipient: Boolean = true,
     var members: List<RoomMember> = emptyList(),
-    var userInfoMap: MutableMap<UserId, UserInfo> = emptyMap<UserId, UserInfo>().toMutableMap(),
-    var job: Job? = null,
+    //var userInfoMap: MutableMap<UserId, UserInfo> = emptyMap<UserId, UserInfo>().toMutableMap(),
+    var redactMsgJob: Job? = null,
     @Volatile
     var lastAccessAt: Long = System.currentTimeMillis()
 )
@@ -165,7 +166,7 @@ object RoomRuntimeRegistry {
     }
 
     /** 主动移除（room 退出、autoDelete 关闭等） */
-    fun remove(roomId: String) = synchronized(lock) { states.remove(roomId)?.job?.cancel() }
+    fun remove(roomId: String) = synchronized(lock) { states.remove(roomId)?.redactMsgJob?.cancel() }
 
     /** 定期清理 */
     private fun cleanupExpired() {
@@ -177,7 +178,7 @@ object RoomRuntimeRegistry {
                     expired += roomId
                 }
             }
-            expired.forEach { roomId -> states.remove(roomId)?.job?.cancel() }
+            expired.forEach { roomId -> states.remove(roomId)?.redactMsgJob?.cancel() }
         }
     }
 }
@@ -187,6 +188,8 @@ fun needClear(event: MatrixTimelineItem.Event): Boolean {
     return when (event.event.content) {
         is MessageContent,
         is StickerContent,
+        is LegacyCallInviteContent,
+        is CallNotifyContent,
         is PollContent -> true
 
         else -> false
@@ -286,7 +289,7 @@ suspend fun JoinedRoom.clearRoom() {
 /**
  * 智能删除、阅后即焚（只扫描一遍，需要事件驱动，或while驱动）
  */
-suspend fun JoinedRoom.deleteSmartly(stopTime: Long, roomRuntimeState: RoomRuntimeState): Int {
+suspend fun JoinedRoom.deleteSmartly(stopTime: Long, waitingTime: Long, roomRuntimeState: RoomRuntimeState): Int {
     val room = this
     var willDeleteNum = 0
     supervisorScope {
@@ -305,11 +308,8 @@ suspend fun JoinedRoom.deleteSmartly(stopTime: Long, roomRuntimeState: RoomRunti
                     timeline.timelineItems.collect { list ->
                         for (item in list) {
                             (item as? MatrixTimelineItem.Event)?.let { event ->
-                                //只处理某个时间之后的。否则就停止翻页
-                                if (event.event.timestamp < stopTime) emptyPageNum.set(99999)
-                                else {
-                                    if (needClear(event)) event.eventId?.let { items[it] = event }
-                                }
+                                //动态计算应该获取的数量，确保在waitingTime内，能处理完
+                                if (needClear(event)) event.eventId?.let { items[it] = event }
                             }
                         }
                         LongTaskManager.update(roomId) {
@@ -337,6 +337,7 @@ suspend fun JoinedRoom.deleteSmartly(stopTime: Long, roomRuntimeState: RoomRunti
             } while (
                 clearProgressIsRunning(roomId)
                 && emptyPageNum.get() <= 3
+                && items.size < waitingTime / 5000
                 && !timeline.paginate(TimelineForDelete.PaginationDirection.BACKWARDS).getOrElse { true })
             // 等待 timelineItems 最终稳定
             var last = -1
@@ -352,8 +353,6 @@ suspend fun JoinedRoom.deleteSmartly(stopTime: Long, roomRuntimeState: RoomRunti
             // Step 3: 删除消息
 
             var deleted = 0
-            val autoDeleteEnum = room.customInfo().getState<AutoDeleteState>().autoDeleteEnum
-            val waitingTime: Double = DelayInfo.fromString(autoDeleteEnum.value)?.inMilliseconds ?: 0.0
 
             suspend fun doDeleteItem(item: MatrixTimelineItem.Event) {
                 item.eventId?.let { eventId ->
@@ -367,19 +366,16 @@ suspend fun JoinedRoom.deleteSmartly(stopTime: Long, roomRuntimeState: RoomRunti
             val delayList = mutableListOf<MatrixTimelineItem.Event>()
             for (item in items.values.toList().sortedByDescending { it.event.timestamp }) {
                 if (!clearProgressIsRunning(roomId)) break
-                //定时删除。多人房间和两人房间策略不同：多人房间不能依赖read receipt，只应该根据消息发送时间决定删除；
-                // 两人房间，放过没阅读的消息，且把要删除的消息加入5分钟延迟队列。
+
+                // 不论是否应该处理这条消息，都读取它携带的回执信息
+                item.event.receipts.forEach { it -> roomRuntimeState.isRead = true }
+
+                //定时删除。多人房间和两人房间策略不同：多人房间不能依赖 read receipt，只应该根据消息发送时间决定删除；
+                // 两人房间，放过没阅读的消息，且把要删除的消息加入 5 分钟延迟队列。
                 if (System.currentTimeMillis() > item.event.timestamp + waitingTime) {
                     if (roomRuntimeState.members.size >= 2) { //两人
-                        item.event.receipts.forEach { it -> roomRuntimeState.userInfoMap.getOrPut(it.userId) { UserInfo() }.isRead = true }
-                        val otherUser = roomRuntimeState.members.map { it.userId }.firstOrNull { it != item.event.sender }
-                            ?.let { roomRuntimeState.userInfoMap[it] }
-                        if (otherUser == null) Timber.w("AutoDelete: receiver missing in members, treat as safe-delete. room=${roomId}")
                         // 某人发的消息，需要等对方已读，或对方禁止发送已读回执，或对方不存在，才能删除。
-                        if (otherUser == null
-                            || otherUser.isRead
-                            || !otherUser.permitRecipient) {
-                            // 把消息放入list
+                        if (roomRuntimeState.isRead || !roomRuntimeState.permitRecipient) {
                             delayList.add(item)
                         }
                     } else { //多人，是否也应该加入延迟队列？
@@ -389,17 +385,17 @@ suspend fun JoinedRoom.deleteSmartly(stopTime: Long, roomRuntimeState: RoomRunti
                 }
             }// end for
             //如果for循环完了，都没发现已读标记，就说明对方禁止发送已读标记(这个判断不准确，但没办法)，那么下次就直接删除。
-            roomRuntimeState.userInfoMap.values.forEach { it ->
-                if (!it.isRead && items.size > 20) it.permitRecipient = false
-                else if (it.isRead) it.permitRecipient = true   // 自动恢复
-            }
+
+            if (!roomRuntimeState.isRead && items.size > 20) roomRuntimeState.permitRecipient = false
+            else if (roomRuntimeState.isRead) roomRuntimeState.permitRecipient = true   // 自动恢复
 
             //创建线程，延迟10分钟后删除
             if (delayList.isNotEmpty()) {
                 willDeleteNum = delayList.size
                 val snapshot = delayList.toList()
-                roomRuntimeState.job = LongTaskManager.AppScope.scope.launch {
-                    delay(MAX_DELAY_TIME / 2) // 独立计时
+                roomRuntimeState.redactMsgJob = LongTaskManager.AppScope.scope.launch {
+                    //delay(MAX_DELAY_TIME / 2) // 独立计时
+                    delay(30 * 1000)
                     snapshot.forEach { doDeleteItem(it) }
                 }
             }

@@ -13,11 +13,9 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.features.leaveroom.api.LeaveRoomEvent.LeaveRoom
@@ -42,7 +40,6 @@ import io.element.android.libraries.matrix.api.room.MessageEventType
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.room.RoomMembersState
-import io.element.android.libraries.matrix.api.room.RoomRuntimeState
 import io.element.android.libraries.matrix.api.room.StateEventType
 import io.element.android.libraries.matrix.api.room.clearRoom
 import io.element.android.libraries.matrix.api.room.join.JoinRule
@@ -120,13 +117,12 @@ class RoomDetailsPresenter(
         val roomType = getRoomType(dmMember, currentMember)
         val roomCallState = roomCallStatePresenter.present()
         val joinedMemberCount by remember { derivedStateOf { roomInfo.joinedMembersCount } }
-        var showConfirmClearDialog by remember { mutableStateOf(false) }
         val userEventPermissions by userEventPermissions(roomInfo)
         val clearProgress by LongTaskManager.progress.map { it[room.roomId.value] }.collectAsState(initial = null)
         val clearProgressState by remember(clearProgress) {
             derivedStateOf {
                 ClearProgressState(
-                    clearType = clearProgress?.clearType?: LongTaskManager.ClearType.CLEAR,
+                    clearType = clearProgress?.clearType ?: LongTaskManager.ClearType.CLEAR,
                     isRunning = clearProgress?.isRunning ?: false,
                     collectedItems = clearProgress?.collectedItems ?: 0,
                     deletedItems = clearProgress?.deletedItems ?: 0,
@@ -166,7 +162,6 @@ class RoomDetailsPresenter(
 
         fun handleClearMessages() {
             if (!clearProgressState.isRunning) {
-                showConfirmClearDialog = false
                 LongTaskManager.runTask(
                     before = { room.incrementTasks() },
                     task = { room.clearRoom() },
@@ -201,10 +196,6 @@ class RoomDetailsPresenter(
                     snackbarDispatcher.post(SnackbarMessage(CommonStrings.common_copied_to_clipboard))
                 }
 
-                is RoomDetailsEvent.ShowConfirmClearDialog -> {
-                    showConfirmClearDialog = event.show
-                }
-
                 RoomDetailsEvent.ClearMessages -> {
                     handleClearMessages()
                 }
@@ -216,6 +207,7 @@ class RoomDetailsPresenter(
                 RoomDetailsEvent.StopClearMessages -> {
                     LongTaskManager.update(room.roomId.value) { it.copy(isRunning = false) }
                 }
+
             }
         }
 
@@ -265,7 +257,6 @@ class RoomDetailsPresenter(
             isTombstoned = roomInfo.successorRoom != null,
             showDebugInfo = isDeveloperModeEnabled,
             userEventPermissions = userEventPermissions,
-            showConfirmClearDialog = showConfirmClearDialog,
             clearProgressState = clearProgressState,
             eventSink = ::handleEvents,
         )

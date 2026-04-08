@@ -8,6 +8,7 @@
 package io.element.android.x
 
 import android.app.Application
+import android.webkit.WebView
 import androidx.startup.AppInitializer
 import androidx.work.Configuration
 import dev.zacsweers.metro.createGraphFactory
@@ -28,6 +29,12 @@ class ElementXApplication : Application(), DependencyInjectionGraphOwner, Config
 
     override fun onCreate() {
         super.onCreate()
+        
+        // Enable WebView debugging for Chrome DevTools
+        if (BuildConfig.DEBUG) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
+        
         AppInitializer.getInstance(this).apply {
             initializeComponent(CrashInitializer::class.java)
             initializeComponent(PlatformInitializer::class.java)

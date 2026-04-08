@@ -86,8 +86,8 @@ internal fun MessagesViewTopBar(
             val roundedCornerShape = RoundedCornerShape(8.dp)
             Row(
                 modifier = Modifier
-                    .clip(roundedCornerShape)
-                    .clickable { onRoomDetailsClick() },
+                        .clip(roundedCornerShape)
+                        .clickable { onRoomDetailsClick() },
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -135,7 +135,8 @@ internal fun MessagesViewTopBar(
             //2.阅后即焚
             IconButton(
                 //即使阅后即焚功能正在运行，也应该允许点击。只要不是“清空房间”任务正在运行即可。
-                enabled = clearProgress == null || clearProgress.clearType == LongTaskManager.ClearType.DELETE,
+                enabled = clearProgress == null || !clearProgress.isRunning
+                    || clearProgress.clearType == LongTaskManager.ClearType.DELETE,
                 onClick = onAutoDeleteClick,
             ) {
                 Icon(
@@ -178,10 +179,10 @@ private fun RoomAvatarAndNameRow(
         )
         Text(
             modifier = Modifier
-                .padding(horizontal = 8.dp)
-                .semantics {
-                    heading()
-                },
+                    .padding(horizontal = 8.dp)
+                    .semantics {
+                        heading()
+                    },
             text = roomName ?: stringResource(CommonStrings.common_no_room_name),
             style = ElementTheme.typography.fontBodyLgMedium,
             fontStyle = FontStyle.Italic.takeIf { roomName == null },

@@ -67,6 +67,7 @@
   <string name="screen_room_details_clear_running">"running "</string>
   <string name="screen_room_details_clear_stoped">"stoped"</string>
   <string name="screen_room_details_clear_stop">"stop"</string>
+  <string name="screen_room_details_clear_stop_auto_delete">"Please stop 'scheduled deletion' on the chat interface before clearing the room."</string>
   <string name="screen_room_details_pinned_events_row_title">"Pinned messages"</string>
   <string name="screen_room_details_profile_row_title">"Profile"</string>
   <string name="screen_room_details_requests_to_join_title">"Requests to join"</string>

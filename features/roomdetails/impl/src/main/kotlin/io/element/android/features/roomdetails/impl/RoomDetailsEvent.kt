@@ -15,7 +15,6 @@ sealed interface RoomDetailsEvent {
     data class SetFavorite(val isFavorite: Boolean) : RoomDetailsEvent
     data object ClearMessages : RoomDetailsEvent
     //data class AutoDelete(val autodeleteState: AutoDeleteState) : RoomDetailsEvent
-    data class ShowConfirmClearDialog(val show: Boolean) : RoomDetailsEvent
     data object ClickWhenPaginate : RoomDetailsEvent
     data object StopClearMessages : RoomDetailsEvent
 }

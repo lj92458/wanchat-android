@@ -63,6 +63,7 @@ import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.extensions.flatMap
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.meta.BuildMeta
+import io.element.android.libraries.core.meta.BuildType
 import io.element.android.libraries.core.tasks.LongTaskManager
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
@@ -76,13 +77,13 @@ import io.element.android.libraries.matrix.api.core.toThreadId
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
+import io.element.android.libraries.matrix.api.room.DelayInfo
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.MAX_DELAY_TIME
 import io.element.android.libraries.matrix.api.room.MessageEventType
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.RoomRuntimeRegistry
-import io.element.android.libraries.matrix.api.room.UserInfo
 import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState
 import io.element.android.libraries.matrix.api.room.custominfo.AutoDeleteState.AutoDeleteEnum
 import io.element.android.libraries.matrix.api.room.deleteSmartly
@@ -91,6 +92,7 @@ import io.element.android.libraries.matrix.api.room.powerlevels.canPinUnpin
 import io.element.android.libraries.matrix.api.room.powerlevels.canRedactOther
 import io.element.android.libraries.matrix.api.room.powerlevels.canRedactOwn
 import io.element.android.libraries.matrix.api.room.powerlevels.canSendMessage
+import io.element.android.libraries.matrix.api.room.roomMembers
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.ui.messages.reply.map
 import io.element.android.libraries.matrix.ui.model.getAvatarData
@@ -105,6 +107,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -219,6 +222,15 @@ class MessagesPresenter(
         val membersState by room.membersStateFlow.collectAsState()
         val dmRoomMember by room.getDirectRoomMember(membersState)
         val roomMemberIdentityStateChanges = identityChangeState.roomMemberIdentityStateChanges
+
+        // Debug: 检查所有成员的状态
+        val allMembers = membersState.roomMembers()
+        if (allMembers != null) {
+            Timber.d("Room members count: ${allMembers.size}, activeMembersCount: ${roomInfo.activeMembersCount}")
+            allMembers.forEach { member ->
+                Timber.d("Member: ${member.userId.value}, membership: ${member.membership}, isActive: ${member.membership.isActive()}")
+            }
+        }
         // 多选，不一定是为了删除，而是能干很多事情。
         val selectedEvents = remember { mutableStateMapOf<TimelineItem.Event, Boolean>() }
         var isMultiSelect by remember { mutableStateOf(false) } //用户开启多选模式时，点击的是哪条消息
@@ -244,15 +256,24 @@ class MessagesPresenter(
                         val roomRuntimeState = RoomRuntimeRegistry.get(room.roomId.value)
                         if (roomRuntimeState.members.isEmpty()) {
                             roomRuntimeState.members = room.getMembers().getOrElse { emptyList() }
-                            roomRuntimeState.members.forEach {
-                                roomRuntimeState.userInfoMap.putIfAbsent(it.userId, UserInfo())
+                        }
+                        Timber.d("autoDelete: Redacting beginTime: $beginTime")
+                        val autoDeleteStateValue = room.customInfo().getState<AutoDeleteState>()
+                        val waitingTime: Double = DelayInfo.fromString(autoDeleteStateValue.autoDeleteEnum.value)?.inMilliseconds ?: 0.0
+                        val willDeleteNum = room.deleteSmartly(autoDeleteStateValue.stopTime, waitingTime.toLong(), roomRuntimeState)
+                        Timber.d("autoDelete: Redacting willDeleteNum: $willDeleteNum")
+                        if (willDeleteNum > 0) {
+                            // 等待删除任务完成，确保整个过程不超过用户设置的 waitingTime
+                            // 至少等待 1 分钟，避免超时时间过短
+                            val remainingTime = maxOf(60_000L, waitingTime.toLong() - (System.currentTimeMillis() - beginTime))
+                            roomRuntimeState.redactMsgJob?.let { job ->
+                                withTimeoutOrNull(remainingTime) {
+                                    job.join()
+                                }
                             }
                         }
-                        val willDeleteNum = room.deleteSmartly(room.customInfo().getState<AutoDeleteState>().stopTime, roomRuntimeState)
-                        if (willDeleteNum > 0) {
-                            roomRuntimeState.job?.join()
-                        }
-                        delay(MAX_DELAY_TIME - (System.currentTimeMillis() - beginTime))
+                        //休息10分钟，再执行(测试时不需要休息)
+                        if (buildMeta.buildType != BuildType.DEBUG) delay(MAX_DELAY_TIME - (System.currentTimeMillis() - beginTime))
                     },
                     after = { room.completeLongTask() },
                     roomId = room.roomId.value,
@@ -261,7 +282,9 @@ class MessagesPresenter(
             }
         }
         LaunchedEffect(autoDeleteState) {
-            if (autoDeleteState.autoDeleteEnum == AutoDeleteEnum.NONE) {
+            if (autoDeleteState.autoDeleteEnum == AutoDeleteEnum.NONE
+                && LongTaskManager.progress.value[room.roomId.value]?.clearType == LongTaskManager.ClearType.DELETE
+            ) {
                 LongTaskManager.update(room.roomId.value) { it.copy(isRunning = false) }
             } else {
                 autoDelete()

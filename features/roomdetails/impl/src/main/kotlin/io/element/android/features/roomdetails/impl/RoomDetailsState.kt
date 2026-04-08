@@ -51,7 +51,6 @@ data class RoomDetailsState(
     val isTombstoned: Boolean,
     val showDebugInfo: Boolean,
     val userEventPermissions: UserEventPermissions,
-    var showConfirmClearDialog: Boolean = false,
     val eventSink: (RoomDetailsEvent) -> Unit,
     val clearProgressState: ClearProgressState = ClearProgressState(LongTaskManager.ClearType.CLEAR, false, 0, 0, 0, false),
 ) {

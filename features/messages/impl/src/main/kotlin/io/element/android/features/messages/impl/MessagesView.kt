@@ -425,6 +425,7 @@ fun MessagesView(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                /* 这一段不需要了。因为会动态计算出截止时间。
                 Text(
                     stringResource(
                         R.string.screen_room_begin_time,
@@ -435,7 +436,7 @@ fun MessagesView(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 20.dp)
-                )
+                ) */
                 HorizontalDivider()
 
                 AutoDeleteEnum.entries.forEach {
