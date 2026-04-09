@@ -33,7 +33,7 @@ fun LoginModeView(
     onLearnMoreClick: () -> Unit,
     onOidcDetails: (OidcDetails) -> Unit,
     onNeedLoginPassword: () -> Unit,
-    onCreateAccountContinue: (url: String) -> Unit
+    onCreateAccountContinue: (url: String) -> Unit,
 ) {
     val context = LocalContext.current
     when (loginMode) {

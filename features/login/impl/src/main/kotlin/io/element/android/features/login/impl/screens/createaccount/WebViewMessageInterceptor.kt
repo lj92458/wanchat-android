@@ -14,12 +14,14 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import timber.log.Timber
 
 class WebViewMessageInterceptor(
     webView: WebView,
     private val debugLog: Boolean,
     private val onOpenExternalUrl: (String) -> Unit,
     private val onMessage: (String) -> Unit,
+    private val onPageNavigation: ((String) -> Boolean)? = null, // Callback to detect page navigation
 ) {
     companion object {
         // We call both the WebMessageListener and the JavascriptInterface objects in JS with this
@@ -32,7 +34,7 @@ class WebViewMessageInterceptor(
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-
+    
                 // We inject this JS code when the page starts loading to attach a message listener to the window.
                 view?.evaluateJavascript(
                     """
@@ -45,15 +47,63 @@ class WebViewMessageInterceptor(
                           },
                           false,
                         );
+                        
+                        // Override history methods to detect SPA navigation
+                        const originalPushState = history.pushState;
+                        const originalReplaceState = history.replaceState;
+                        
+                        history.pushState = function(...args) {
+                            originalPushState.apply(this, args);
+                            console.log('pushState called, new URL: ' + location.href);
+                            $LISTENER_NAME.postMessage(JSON.stringify({type: 'urlChange', url: location.href}));
+                        };
+                        
+                        history.replaceState = function(...args) {
+                            originalReplaceState.apply(this, args);
+                            console.log('replaceState called, new URL: ' + location.href);
+                            $LISTENER_NAME.postMessage(JSON.stringify({type: 'urlChange', url: location.href}));
+                        };
+                        
+                        // Also listen for popstate events
+                        window.addEventListener('popstate', () => {
+                            console.log('popstate event, URL: ' + location.href);
+                            $LISTENER_NAME.postMessage(JSON.stringify({type: 'urlChange', url: location.href}));
+                        });
                     """.trimIndent(),
                     null
                 )
             }
-
+                
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                // Check if registration is complete after page loads
+                url?.let { currentPageUrl ->
+                    onPageNavigation?.let { callback ->
+                        // If callback returns true, it means we should handle this navigation
+                        if (callback(currentPageUrl)) {
+                            Timber.d("Registration detected as complete on page finished: $currentPageUrl")
+                        }
+                    }
+                }
+            }
+    
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 request ?: return false
-                // Load the URL in a Chrome Custom Tab, and return true to cancel the load
-                onOpenExternalUrl(request.url.toString())
+                val url = request.url.toString()
+                
+                Timber.d("shouldOverrideUrlLoading: $url")
+                    
+                // Check if this is a navigation event we should handle
+                onPageNavigation?.let { callback ->
+                    if (callback(url)) {
+                        // Callback handled the navigation, don't load in WebView
+                        Timber.d("Blocked by callback: $url")
+                        return true
+                    }
+                }
+                    
+                // Load other URLs in a Chrome Custom Tab, and return true to cancel the load
+                onOpenExternalUrl(url)
                 return true
             }
         }
@@ -84,7 +134,25 @@ class WebViewMessageInterceptor(
     }
 
     private fun onMessageReceived(json: String?) {
-        // Here is where we would handle the messages from the WebView, passing them to the listener
-        json?.let { onMessage(it) }
+        json?.let { 
+            Timber.d("onMessageReceived: $it")
+            // Check if this is a URL change message
+            if (it.contains("\"urlChange\"")) {
+                try {
+                    val urlMatch = Regex("\"url\":\"([^\"]+)\"").find(it)
+                    urlMatch?.groupValues?.get(1)?.let { newUrl ->
+                        Timber.d("Detected SPA navigation to: $newUrl")
+                        onPageNavigation?.let { callback ->
+                            if (callback(newUrl)) {
+                                Timber.d("SPA navigation blocked, registration complete")
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to parse URL change message")
+                }
+            }
+            onMessage(it) 
+        }
     }
 }

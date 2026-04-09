@@ -29,6 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import timber.log.Timber
 import kotlin.time.Duration.Companion.seconds
 
 @AssistedInject
@@ -55,9 +56,15 @@ class CreateAccountPresenter(
                 is CreateAccountEvents.SetPageProgress -> {
                     pageProgress.value = event.progress
                 }
+
                 is CreateAccountEvents.OnMessageReceived -> {
                     // Ignore unexpected message
                     if (event.message.contains("isTrusted")) return
+                    // Ignore messages after registration completion to prevent parsing errors
+                    if (createAction.value is AsyncAction.Uninitialized || createAction.value is AsyncAction.Success || createAction.value is AsyncAction.Failure) {
+                        Timber.d("Ignoring message after registration completion")
+                        return
+                    }
                     coroutineScope.importSession(event.message, createAction)
                 }
             }

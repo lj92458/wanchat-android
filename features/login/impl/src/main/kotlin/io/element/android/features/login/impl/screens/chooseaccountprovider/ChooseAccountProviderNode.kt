@@ -32,6 +32,7 @@ class ChooseAccountProviderNode(
         fun navigateToLoginPassword()
         fun navigateToOidc(oidcDetails: OidcDetails)
         fun navigateToCreateAccount(url: String)
+        fun navigateToTraditionalRegistration()
     }
 
     private val callback: Callback = callback()

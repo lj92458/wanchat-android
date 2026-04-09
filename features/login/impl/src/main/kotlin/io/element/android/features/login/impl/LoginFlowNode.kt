@@ -19,6 +19,7 @@ import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
 import com.bumble.appyx.navmodel.backstack.BackStack
+import com.bumble.appyx.navmodel.backstack.operation.pop
 import com.bumble.appyx.navmodel.backstack.operation.push
 import com.bumble.appyx.navmodel.backstack.operation.singleTop
 import dev.zacsweers.metro.AppScope
@@ -29,7 +30,6 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.login.api.LoginEntryPoint
 import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
 import io.element.android.features.login.impl.qrcode.QrCodeLoginFlowNode
-import io.element.android.features.login.impl.screens.changeaccountprovider.ChangeAccountProviderNode
 import io.element.android.features.login.impl.screens.chooseaccountprovider.ChooseAccountProviderNode
 import io.element.android.features.login.impl.screens.confirmaccountprovider.ConfirmAccountProviderNode
 import io.element.android.features.login.impl.screens.createaccount.CreateAccountNode
@@ -43,12 +43,14 @@ import io.element.android.libraries.architecture.NodeInputs
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.architecture.inputs
+import io.element.android.libraries.matrix.api.auth.MatrixAuthenticationService
 import io.element.android.libraries.matrix.api.auth.OidcDetails
 import io.element.android.libraries.oidc.api.OidcAction
 import io.element.android.libraries.oidc.api.OidcActionFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
+import timber.log.Timber
 
 @ContributesNode(AppScope::class)
 @AssistedInject
@@ -57,6 +59,7 @@ class LoginFlowNode(
     @Assisted plugins: List<Plugin>,
     private val accountProviderDataSource: AccountProviderDataSource,
     private val oidcActionFlow: OidcActionFlow,
+    private val authenticationService: MatrixAuthenticationService,
 ) : BaseFlowNode<LoginFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.OnBoarding,
@@ -186,6 +189,13 @@ class LoginFlowNode(
                     override fun navigateToLoginPassword() {
                         backstack.push(NavTarget.LoginPassword)
                     }
+
+                    override fun navigateToTraditionalRegistration() {
+                        // Get the selected account provider URL
+                        // This would need to be passed from the state
+                        // For now, we'll navigate to search
+                        backstack.push(NavTarget.SearchAccountProvider(isAccountCreation = true))
+                    }
                 }
                 createNode<ChooseAccountProviderNode>(buildContext, listOf(callback))
             }
@@ -212,6 +222,11 @@ class LoginFlowNode(
                     override fun navigateToChangeAccountProvider() {
                         //backstack.push(NavTarget.ChangeAccountProvider)
                         backstack.push(NavTarget.SearchAccountProvider(isAccountCreation = navTarget.isAccountCreation))
+                    }
+
+                    override fun navigateToTraditionalRegistration() {
+                        // Use CreateAccount with app.cinny.in registration page
+                        backstack.push(NavTarget.CreateAccount(url = "https://app.cinny.in/register"))
                     }
                 }
                 createNode<ConfirmAccountProviderNode>(buildContext, plugins = listOf(inputs, callback))
@@ -253,10 +268,21 @@ class LoginFlowNode(
                 createNode<LoginPasswordNode>(buildContext)
             }
             is NavTarget.CreateAccount -> {
+                // Always use WebView for account creation to enable JavaScript bridge communication
                 val inputs = CreateAccountNode.Inputs(
                     url = navTarget.url,
                 )
-                createNode<CreateAccountNode>(buildContext, listOf(inputs))
+                val callback = object : CreateAccountNode.Callback {
+                    override fun onRegistrationComplete() {
+                        // Registration successful, navigate to login password screen
+                        // First pop the CreateAccount node, then navigate to LoginPassword
+                        Timber.d("Registration completed via URL navigation detection")
+                        // Use pop to remove CreateAccount, then singleTop for LoginPassword
+                        backstack.pop()
+                        backstack.singleTop(NavTarget.LoginPassword)
+                    }
+                }
+                createNode<CreateAccountNode>(buildContext, listOf(inputs, callback))
             }
         }
     }

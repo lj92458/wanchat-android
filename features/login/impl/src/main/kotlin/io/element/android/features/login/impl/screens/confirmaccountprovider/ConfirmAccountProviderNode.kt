@@ -46,6 +46,7 @@ class ConfirmAccountProviderNode(
         fun navigateToOidc(oidcDetails: OidcDetails)
         fun navigateToCreateAccount(url: String)
         fun navigateToChangeAccountProvider()
+        fun navigateToTraditionalRegistration()
     }
 
     private val callback: Callback = callback()

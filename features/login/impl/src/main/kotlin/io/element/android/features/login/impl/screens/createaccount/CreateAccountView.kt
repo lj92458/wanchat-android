@@ -23,6 +23,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -49,8 +53,12 @@ fun CreateAccountView(
     state: CreateAccountState,
     onBackClick: () -> Unit,
     onOpenExternalUrl: (String) -> Unit,
+    onRegistrationComplete: (() -> Unit)? = null, // Optional callback for registration completion
     modifier: Modifier = Modifier,
 ) {
+    // Track if registration completion has been handled to prevent duplicate triggers
+    var hasHandledCompletion by remember { mutableStateOf(false) }
+    
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -72,6 +80,7 @@ fun CreateAccountView(
                 modifier = Modifier
                     .fillMaxSize(),
                 state = state,
+                onRegistrationComplete = onRegistrationComplete,
                 onWebViewCreate = { webView ->
                     WebViewMessageInterceptor(
                         webView,
@@ -80,6 +89,31 @@ fun CreateAccountView(
                         onMessage = {
                             state.eventSink(CreateAccountEvents.OnMessageReceived(it))
                         },
+                        onPageNavigation = { url ->
+                            // Detect when user navigates away from cinny registration page
+                            if (onRegistrationComplete != null && !hasHandledCompletion) {
+                                val isRegisterPage = url.startsWith("https://app.cinny.in/register")
+                                
+                                Timber.d("URL navigation detected: $url")
+                                Timber.d("  - isRegisterPage: $isRegisterPage")
+                                
+                                // If URL doesn't start with /register, registration is complete
+                                if (!isRegisterPage) {
+                                    Timber.d("✓ Left registration page! Registration likely successful. Navigating to login...")
+                                    hasHandledCompletion = true
+                                    
+                                    // Disable JavaScript to prevent further messages from cinny
+                                    webView.settings.javaScriptEnabled = false
+                                    // Hide WebView immediately to prevent showing chat interface or errors
+                                    webView.visibility = android.view.View.GONE
+                                    // Trigger navigation (WebView will be destroyed by backstack.newRoot)
+                                    onRegistrationComplete()
+                                    // Return true to block loading in WebView
+                                    return@WebViewMessageInterceptor true
+                                }
+                            }
+                            false // Let default handling proceed
+                        }
                     )
                 }
             )
@@ -111,6 +145,7 @@ fun CreateAccountView(
 @Composable
 private fun CreateAccountWebView(
     state: CreateAccountState,
+    onRegistrationComplete: (() -> Unit)? = null,
     onWebViewCreate: (WebView) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -123,12 +158,25 @@ private fun CreateAccountWebView(
             modifier = modifier,
             factory = { context ->
                 WebView(context).apply {
+                    // Clear all cache and data before loading registration page
+                    clearCache(true)
+                    clearHistory()
+                    clearFormData()
+                    
                     onWebViewCreate(this)
                     setup(state)
                 }
             },
             update = { webView ->
                 if (webView.url != state.url) {
+                    // Clear all data before loading new URL to ensure clean state
+                    webView.clearCache(true)
+                    webView.clearHistory()
+                    webView.clearFormData()
+                    webView.evaluateJavascript(
+                        "localStorage.clear(); sessionStorage.clear();",
+                        null
+                    )
                     webView.loadUrl(state.url)
                 }
             },
