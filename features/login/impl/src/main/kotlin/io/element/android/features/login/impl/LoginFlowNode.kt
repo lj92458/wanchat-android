@@ -223,11 +223,6 @@ class LoginFlowNode(
                         //backstack.push(NavTarget.ChangeAccountProvider)
                         backstack.push(NavTarget.SearchAccountProvider(isAccountCreation = navTarget.isAccountCreation))
                     }
-
-                    override fun navigateToTraditionalRegistration() {
-                        // Use CreateAccount with app.cinny.in registration page
-                        backstack.push(NavTarget.CreateAccount(url = "https://app.cinny.in/register"))
-                    }
                 }
                 createNode<ConfirmAccountProviderNode>(buildContext, plugins = listOf(inputs, callback))
             }

@@ -90,19 +90,19 @@ fun CreateAccountView(
                             state.eventSink(CreateAccountEvents.OnMessageReceived(it))
                         },
                         onPageNavigation = { url ->
-                            // Detect when user navigates away from cinny registration page
+                            // Detect when user navigates away from registration page
                             if (onRegistrationComplete != null && !hasHandledCompletion) {
-                                val isRegisterPage = url.startsWith("https://app.cinny.in/register")
+                                // Check if it's a registration page (support both cinny and wanchat)
+                                val isCinnyRegisterPage = url.startsWith("https://app.cinny.in/register")
+                                val isWanchatRegisterPage = url.startsWith("https://wanchat.info/register")
+                                val isRegisterPage = isCinnyRegisterPage || isWanchatRegisterPage
                                 
-                                Timber.d("URL navigation detected: $url")
-                                Timber.d("  - isRegisterPage: $isRegisterPage")
-                                
-                                // If URL doesn't start with /register, registration is complete
+                                // If URL doesn't match registration page pattern, registration is complete
                                 if (!isRegisterPage) {
                                     Timber.d("✓ Left registration page! Registration likely successful. Navigating to login...")
                                     hasHandledCompletion = true
                                     
-                                    // Disable JavaScript to prevent further messages from cinny
+                                    // Disable JavaScript to prevent further messages
                                     webView.settings.javaScriptEnabled = false
                                     // Hide WebView immediately to prevent showing chat interface or errors
                                     webView.visibility = android.view.View.GONE

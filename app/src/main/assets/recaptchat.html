@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册账户</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            max-width: 450px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #1a1a1a;
+            font-size: 28px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+
+        .notice-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #856404;
+        }
+
+        .notice-box a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .notice-box a:hover {
+            text-decoration: underline;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .recaptcha-container {
+            margin: 20px 0;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        #recaptcha-widget {
+            display: inline-block;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            margin-top: 8px;
+        }
+
+        button:hover:not(:disabled) {
+            background: #5568d3;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3a3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            margin-top: 16px;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .step {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            transition: background 0.3s ease;
+        }
+
+        .step.active {
+            background: #667eea;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>注册账户</h1>
+    <div class="notice-box">
+        <strong>注意:</strong>这里只能注册万信服务器，其它服务器在<a href="https://app.cinny.in" target="_blank">https://app.cinny.in</a>注册。
+    </div>
+
+    <div class="error-message" id="errorMessage"></div>
+    <div class="success-message" id="successMessage"></div>
+
+    <div class="step-indicator">
+        <div class="step active" id="step1"></div>
+        <div class="step" id="step2"></div>
+        <div class="step" id="step3"></div>
+    </div>
+
+    <form id="registrationForm" style="display: none;">
+        <div class="form-group" id="usernameGroup">
+            <label for="username">用户名</label>
+            <input type="text" id="username" name="username" required
+                   placeholder="输入用户名" autocomplete="username">
+        </div>
+
+        <div class="form-group" id="passwordGroup">
+            <label for="password">密码</label>
+            <input type="password" id="password" name="password" required
+                   placeholder="至少8个字符" minlength="8" autocomplete="new-password">
+        </div>
+
+        <div class="form-group" id="confirmPasswordGroup">
+            <label for="confirmPassword">确认密码</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" required
+                   placeholder="再次输入密码" minlength="8" autocomplete="new-password">
+        </div>
+
+        <div class="form-group" id="emailGroup" style="display: none;">
+            <label for="email">邮箱地址</label>
+            <input type="email" id="email" name="email"
+                   placeholder="example@domain.com" autocomplete="email">
+        </div>
+
+        <div class="form-group" id="tokenGroup" style="display: none;">
+            <label for="token">邀请码</label>
+            <input type="text" id="token" name="token"
+                   placeholder="输入邀请码">
+        </div>
+
+        <div class="recaptcha-container" id="recaptchaContainer" style="display: none;">
+            <div id="recaptcha-widget"></div>
+        </div>
+
+        <button type="submit" id="submitBtn">注册</button>
+    </form>
+
+    <div class="loading" id="loading" style="display: block;">
+        正在加载注册信息...
+    </div>
+</div>
+
+<script>
+    // Homeserver URL will be dynamically fetched from well-known endpoint
+    let homeserverUrl = '';
+    let sessionId = '';
+    let recaptchaToken = '';
+    let recaptchaWidgetId = null;
+    let clientSecret = '';
+    let emailSid = '';
+    let currentStage = 0;
+    let authStages = [];
+    let completedAuths = [];
+
+    // Generate random client secret
+    function generateClientSecret() {
+        return Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+    }
+
+    // Show error message
+    function showError(message) {
+        const errorEl = document.getElementById('errorMessage');
+        errorEl.textContent = message;
+        errorEl.style.display = 'block';
+        document.getElementById('successMessage').style.display = 'none';
+    }
+
+    // Show success message
+    function showSuccess(message) {
+        const successEl = document.getElementById('successMessage');
+        successEl.textContent = message;
+        successEl.style.display = 'block';
+        document.getElementById('errorMessage').style.display = 'none';
+    }
+
+    // Update step indicator
+    function updateStep(stepNumber) {
+        document.querySelectorAll('.step').forEach((step, index) => {
+            step.classList.toggle('active', index < stepNumber);
+        });
+    }
+
+    // Set loading state
+    function setLoading(loading) {
+        document.getElementById('loading').style.display = loading ? 'block' : 'none';
+        document.getElementById('submitBtn').disabled = loading;
+    }
+
+    // Show form fields based on auth stages
+    // Note: Fields are hidden by default in HTML, this function shows the required ones
+    function showFormFields(stages) {
+        // Always show username and password
+        document.getElementById('usernameGroup').style.display = 'block';
+        document.getElementById('passwordGroup').style.display = 'block';
+        document.getElementById('confirmPasswordGroup').style.display = 'block';
+
+        // Show email field if needed
+        if (stages.includes('m.login.email.identity')) {
+            document.getElementById('emailGroup').style.display = 'block';
+            document.getElementById('email').required = true;
+        }
+
+        // Show token field if needed
+        if (stages.includes('m.login.registration_token')) {
+            document.getElementById('tokenGroup').style.display = 'block';
+            document.getElementById('token').required = true;
+        }
+    }
+
+    // Get registration flows
+    async function getRegistrationFlows() {
+        try {
+            console.log('Fetching registration flows from:', homeserverUrl + '/_matrix/client/v3/register');
+
+            const response = await fetch(homeserverUrl + '/_matrix/client/v3/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            });
+
+            console.log('Response status:', response.status);
+
+            // 401 is expected and contains the flows we need
+            // Other error codes are actual failures
+            if (response.status !== 401 && !response.ok) {
+                const errorText = await response.text();
+                console.error('Response error:'+response.status, errorText);
+                throw new Error('获取注册流程失败: ' + response.status + ' ' + response.statusText);
+            }
+
+            // Parse the response (401 responses still contain valid JSON with flows)
+            const data = await response.json();
+            console.log('Registration flows received:', data);
+
+            // Validate that we got the required fields
+            if (!data.flows || !data.session) {
+                throw new Error('响应数据不完整：缺少 flows 或 session 字段');
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error getting registration flows:', error);
+            console.error('Error details:', error.message, error.stack);
+            throw error;
+        }
+    }
+
+    // Request email verification
+    async function requestEmailVerification() {
+        try {
+            clientSecret = generateClientSecret();
+            const email = document.getElementById('email').value;
+
+            const response = await fetch(homeserverUrl + '/_matrix/client/v3/register/email/requestToken', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    client_secret: clientSecret,
+                    send_attempt: 1
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.errmessage || '发送验证邮件失败');
+            }
+
+            const data = await response.json();
+            emailSid = data.sid;
+            showSuccess('验证邮件已发送，请检查邮箱并点击验证链接');
+            updateStep(3);
+            return data;
+        } catch (error) {
+            console.error('Error requesting email verification:', error);
+            throw error;
+        }
+    }
+
+    // Handle form submission - single submit with all fields
+    document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (password !== confirmPassword) {
+            showError('两次输入的密码不一致');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            await submitRegistration();
+        } catch (error) {
+            showError(error.message || '注册失败，请重试');
+            setLoading(false);
+        }
+    });
+
+    // Choose the best authentication flow (prefer loosest/easiest)
+    function chooseBestFlow(flows) {
+        if (!flows || flows.length === 0) {
+            throw new Error('没有可用的注册流程');
+        }
+
+        // Define difficulty scores for each auth stage type
+        // Lower score = easier/looser authentication
+        const stageDifficulty = {
+            'm.login.dummy': 0,              // No verification needed (easiest)
+            'm.login.registration_token': 1,  // Just need an invitation code
+            'm.login.password': 2,            // Password only
+            'm.login.email.identity': 3,      // Email verification required
+            'm.login.msisdn': 4,              // SMS verification required
+            'm.login.recaptcha': 5,           // CAPTCHA required (hardest)
+        };
+
+        // Calculate difficulty for each flow
+        // Primary: Flow difficulty = MAX of all its stages (bottleneck principle)
+        // Secondary: Total stages count (fewer is better)
+        // Tertiary: Sum of all stages (lower total effort is better)
+        const flowScores = flows.map(flow => {
+            // Primary score: Maximum difficulty (bottleneck)
+            const maxDifficulty = flow.stages.reduce((max, stage) => {
+                const difficulty = stageDifficulty[stage] ?? 10;
+                return Math.max(max, difficulty);
+            }, 0);
+
+            // Secondary score: Number of stages (fewer steps = better UX)
+            const stageCount = flow.stages.length;
+
+            // Tertiary score: Sum of all difficulties (total effort)
+            const totalEffort = flow.stages.reduce((sum, stage) => {
+                return sum + (stageDifficulty[stage] ?? 10);
+            }, 0);
+
+            return {
+                flow: flow,
+                primaryScore: maxDifficulty,
+                secondaryScore: stageCount,
+                tertiaryScore: totalEffort,
+                stages: flow.stages
+            };
+        });
+
+        // Multi-level sorting
+        flowScores.sort((a, b) => {
+            // Level 1: Sort by maximum difficulty (ascending)
+            if (a.primaryScore !== b.primaryScore) {
+                return a.primaryScore - b.primaryScore;
+            }
+
+            // Level 2: If tied, sort by number of stages (ascending - fewer is better)
+            if (a.secondaryScore !== b.secondaryScore) {
+                return a.secondaryScore - b.secondaryScore;
+            }
+
+            // Level 3: If still tied, sort by total effort (ascending)
+            return a.tertiaryScore - b.tertiaryScore;
+        });
+
+        console.log('Flow comparison:', flowScores.map(f => ({
+            stages: f.stages,
+            maxDifficulty: f.primaryScore,
+            stageCount: f.secondaryScore,
+            totalEffort: f.tertiaryScore
+        })));
+
+        // Return the flow with the best (lowest) scores
+        const bestFlow = flowScores[0].flow;
+        console.log('Selected best flow:', {
+            stages: flowScores[0].stages,
+            maxDifficulty: flowScores[0].primaryScore,
+            reason: 'Lowest difficulty score'
+        });
+
+        return bestFlow;
+    }
+
+    // Submit registration with all required auth data
+    async function submitRegistration() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        // Step 1: Get registration flows to get session ID
+        const flowsData = await getRegistrationFlows();
+        sessionId = flowsData.session;
+
+        console.log('Registration flows:', flowsData);
+
+        // Choose the best flow (prefer simplest)
+        const flow = chooseBestFlow(flowsData.flows);
+        authStages = flow.stages;
+
+        console.log('Selected flow:', flow);
+
+        // Build auth object based on what stages are required
+        let auth = { session: sessionId };
+
+        // Check if token is required and provided
+        if (authStages.includes('m.login.registration_token')) {
+            const token = document.getElementById('token').value;
+            if (!token) {
+                throw new Error('请输入邀请码');
+            }
+            auth = {
+                type: 'm.login.registration_token',
+                token: token,
+                session: sessionId
+            };
+        }
+
+        // Check if recaptcha is required
+        let needsRecaptcha = false;
+        let recaptchaPublicKey = null;
+        if (authStages.includes('m.login.recaptcha')) {
+            needsRecaptcha = true;
+            recaptchaPublicKey = flowsData.params?.['m.login.recaptcha']?.public_key;
+            console.log('reCAPTCHA params:', flowsData.params?.['m.login.recaptcha']);
+            console.log('Public key received:', recaptchaPublicKey);
+            console.log('Public key type:', typeof recaptchaPublicKey);
+            if (!recaptchaPublicKey) {
+                throw new Error('缺少 reCAPTCHA public_key');
+            }
+        }
+
+        const payload = {
+            username: username,
+            password: password,
+            auth: auth,
+            initial_device_display_name: '万信 Android'
+        };
+
+        console.log('Submitting registration:', payload);
+
+        const response = await fetch(homeserverUrl + '/_matrix/client/v3/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        // Handle 401 - this is normal, it means we need additional auth
+        if (response.status === 401) {
+            const errorData = await response.json();
+            console.log('Got 401 response, checking for recaptcha requirement...');
+
+            // If recaptcha is required but not completed yet
+            if (needsRecaptcha && !recaptchaToken) {
+                console.log('Showing recaptcha challenge...');
+                showRecaptchaChallenge(recaptchaPublicKey);
+                setLoading(false);
+                return; // Wait for user to complete recaptcha
+            }
+
+            // If recaptcha was completed, include it in the auth
+            if (needsRecaptcha && recaptchaToken) {
+                console.log('Retrying with recaptcha token...');
+                const retryPayload = {
+                    ...payload,
+                    auth: {
+                        type: 'm.login.recaptcha',
+                        response: recaptchaToken,
+                        session: errorData.session || sessionId
+                    }
+                };
+
+                const retryResponse = await fetch(homeserverUrl + '/_matrix/client/v3/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(retryPayload)
+                });
+
+                if (!retryResponse.ok) {
+                    const retryError = await retryResponse.json();
+                    console.error('Retry registration error:', JSON.stringify(retryError));
+                    throw new Error(retryError.error || retryError.errmessage || '注册失败');
+                }
+
+                const data = await retryResponse.json();
+                handleRegistrationSuccess(data);
+                return data;
+            }
+
+            // Other 401 errors
+            throw new Error(errorData.error || errorData.errmessage || '需要额外验证');
+        } else if(!response.ok) {
+            const error = await response.json();
+            console.error('Registration error:', JSON.stringify(error));
+            throw new Error(error.error || error.errmessage || '注册失败');
+        }
+
+        const data = await response.json();
+        handleRegistrationSuccess(data);
+        return data;
+    }
+
+    // Detect captcha type based on public key format
+    function detectCaptchaType(publicKey) {
+        if (!publicKey) return null;
+
+        // Cloudflare Turnstile: starts with '0x' and length ~40-50
+        if (publicKey.startsWith('0x') && publicKey.length >= 30) {
+            return 'turnstile';
+        }
+
+        // Google reCAPTCHA v2/v3: starts with '6L' or '6K'
+        if ((publicKey.startsWith('6L') || publicKey.startsWith('6K')) && publicKey.length === 40) {
+            return 'recaptcha';
+        }
+
+        // hCaptcha: starts with specific patterns, typically shorter
+        if (publicKey.length === 32 || publicKey.includes('-')) {
+            return 'hcaptcha';
+        }
+
+        // Default to recaptcha.net proxy for unknown formats
+        return 'recaptcha-proxy';
+    }
+
+    // Show recaptcha challenge (smart detection with fallback)
+    function showRecaptchaChallenge(publicKey) {
+        // Hide form, show recaptcha container
+        document.getElementById('registrationForm').style.display = 'none';
+        document.getElementById('recaptchaContainer').style.display = 'block';
+
+        // Store public key in data attribute for later use
+        document.getElementById('recaptchaContainer').dataset.publicKey = publicKey;
+
+        // Detect captcha type
+        const captchaType = detectCaptchaType(publicKey);
+        console.log('Detected captcha type:', captchaType, 'for key:', publicKey);
+
+        // Try in priority order: Turnstile -> recaptcha.net -> google.com -> hCaptcha
+        if (captchaType === 'turnstile') {
+            loadTurnstile(publicKey);
+        } else if (captchaType === 'recaptcha') {
+            // Try recaptcha.net first (works in China), then google.com
+            loadRecaptcha(publicKey, 'recaptcha.net');
+        } else if (captchaType === 'hcaptcha') {
+            loadHCaptcha(publicKey);
+        } else {
+            // Unknown type, try recaptcha.net as fallback
+            console.warn('Unknown captcha type, trying recaptcha.net proxy...');
+            loadRecaptcha(publicKey, 'recaptcha.net');
+        }
+    }
+
+    // Load Cloudflare Turnstile
+    function loadTurnstile(siteKey) {
+        if (!window.turnstile) {
+            const script = document.createElement('script');
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        } else {
+            renderTurnstileWidget(siteKey);
+        }
+    }
+
+    // Global callback when turnstile script loads
+    window.onTurnstileLoad = function() {
+        const publicKey = document.getElementById('recaptchaContainer').dataset.publicKey;
+        if (publicKey) {
+            renderTurnstileWidget(publicKey);
+        }
+    };
+
+    // Render turnstile widget
+    function renderTurnstileWidget(siteKey) {
+        console.log('Rendering Turnstile widget with sitekey:', siteKey);
+
+        turnstile.render('#recaptcha-widget', {
+            sitekey: siteKey,
+            callback: (token) => {
+                recaptchaToken = token;
+                console.log('Turnstile completed, submitting registration...');
+
+                // Hide recaptcha, show loading
+                document.getElementById('recaptchaContainer').style.display = 'none';
+                setLoading(true);
+
+                // Retry registration with turnstile token
+                submitRegistration().catch(error => {
+                    showError(error.message || '注册失败');
+                    setLoading(false);
+                    document.getElementById('registrationForm').style.display = 'block';
+                });
+            },
+            'error-callback': (errorCode) => {
+                recaptchaToken = '';
+                console.error('Turnstile error:', errorCode);
+                showError('验证失败 (' + errorCode + ')，请重试');
+            }
+        });
+    }
+
+    // Load Google reCAPTCHA (with configurable domain)
+    let recaptchaLoaded = false;
+    function loadRecaptcha(siteKey, domain) {
+        const recaptchaDomain = domain || 'www.google.com';
+        console.log('Loading reCAPTCHA from:', recaptchaDomain);
+
+        if (!window.grecaptcha) {
+            const script = document.createElement('script');
+            script.src = 'https://' + recaptchaDomain + '/recaptcha/api.js?render=explicit';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+
+            // Wait for script to load, then use grecaptcha.ready
+            script.onload = function() {
+                console.log('reCAPTCHA script loaded from', recaptchaDomain);
+                grecaptcha.ready(function() {
+                    console.log('reCAPTCHA ready, rendering widget...');
+                    renderRecaptchaWidget(siteKey, recaptchaDomain);
+                });
+            };
+
+            script.onerror = function() {
+                console.error('Failed to load reCAPTCHA script from', recaptchaDomain);
+                showError('验证码脚本加载失败');
+            };
+        } else {
+            // Script already loaded, use grecaptcha.ready
+            grecaptcha.ready(function() {
+                console.log('reCAPTCHA already loaded, rendering widget...');
+                renderRecaptchaWidget(siteKey, recaptchaDomain);
+            });
+        }
+    }
+
+    // Render reCAPTCHA widget
+    function renderRecaptchaWidget(siteKey, domain) {
+        console.log('Rendering reCAPTCHA widget with sitekey:', siteKey, 'domain:', domain);
+
+        try {
+            // If widget already exists, reset it instead of re-rendering
+            if (recaptchaWidgetId !== null) {
+                console.log('Resetting existing reCAPTCHA widget:', recaptchaWidgetId);
+                grecaptcha.reset(recaptchaWidgetId);
+                // Don't set to null, keep the same widget ID
+            } else {
+                // First time render
+                recaptchaWidgetId = grecaptcha.render('recaptcha-widget', {
+                    sitekey: siteKey,
+                    callback: (token) => {
+                        recaptchaToken = token;
+                        console.log('reCAPTCHA completed with token:', token.substring(0, 50) + '...');
+                        console.log('Token length:', token.length);
+
+                        // Hide recaptcha, show loading
+                        document.getElementById('recaptchaContainer').style.display = 'none';
+                        setLoading(true);
+
+                        // Retry registration with recaptcha token
+                        submitRegistration().catch(error => {
+                            showError(error.message || '注册失败');
+                            setLoading(false);
+                            document.getElementById('registrationForm').style.display = 'block';
+                        });
+                    },
+                    'expired-callback': () => {
+                        recaptchaToken = '';
+                        console.warn('reCAPTCHA token expired');
+                        showError('验证已过期，请重新验证');
+                    },
+                    'error-callback': (errorCode) => {
+                        recaptchaToken = '';
+                        console.error('=== reCAPTCHA ERROR DETAILS ===');
+                        console.error('Error code:', errorCode);
+                        console.error('Error type:', typeof errorCode);
+                        console.error('Error value:', JSON.stringify(errorCode));
+                        console.error('Current domain:', domain);
+                        console.error('Sitekey:', siteKey);
+                        console.error('Widget ID:', recaptchaWidgetId);
+                        console.error('Window location:', window.location.href);
+                        console.error('================================');
+
+                        // Try to get more info from grecaptcha
+                        if (window.grecaptcha && grecaptcha.getResponse) {
+                            try {
+                                const response = grecaptcha.getResponse(recaptchaWidgetId);
+                                console.log('Current response:', response ? 'has token' : 'no token');
+                            } catch (e) {
+                                console.warn('Cannot get response:', e);
+                            }
+                        }
+
+                        // If recaptcha.net failed, try google.com (only once)
+                        if (domain === 'recaptcha.net' && !recaptchaLoaded) {
+                            console.log('recaptcha.net failed, switching to google.com...');
+                            showError('验证加载失败，尝试备用服务器...');
+                            recaptchaLoaded = true;
+
+                            // Completely remove the old widget element
+                            const oldWidget = document.getElementById('recaptcha-widget');
+                            if (oldWidget && oldWidget.parentNode) {
+                                oldWidget.parentNode.removeChild(oldWidget);
+                            }
+
+                            // Create a fresh new element
+                            const newWidget = document.createElement('div');
+                            newWidget.id = 'recaptcha-widget';
+                            document.getElementById('recaptchaContainer').appendChild(newWidget);
+
+                            // Reset widget ID to allow re-rendering
+                            recaptchaWidgetId = null;
+
+                            // Reload script from google.com
+                            loadRecaptcha(siteKey, 'www.google.com');
+                        } else {
+                            // Provide more helpful error message
+                            let errorMsg = '验证失败';
+                            if (errorCode === 'invalid-site-key') {
+                                errorMsg = '验证码配置错误：sitekey 无效';
+                            } else if (errorCode === 'invalid-domain') {
+                                errorMsg = '验证码配置错误：当前域名未授权';
+                            } else if (errorCode === 'timeout-or-duplicate') {
+                                errorMsg = '验证超时，请重试';
+                            } else {
+                                errorMsg = '验证失败 (' + (errorCode || '未知错误') + ')';
+                            }
+                            showError(errorMsg + '，请联系管理员检查配置');
+                        }
+                    }
+                });
+
+                console.log('reCAPTCHA widget rendered successfully, ID:', recaptchaWidgetId);
+            }
+        } catch (e) {
+            console.error('Failed to render reCAPTCHA:', e.message);
+            console.error('Error stack:', e.stack);
+            showError('验证码加载失败: ' + e.message);
+        }
+    }
+
+    // Load hCaptcha
+    function loadHCaptcha(siteKey) {
+        console.log('Loading hCaptcha with sitekey:', siteKey);
+
+        if (!window.hcaptcha) {
+            const script = document.createElement('script');
+            script.src = 'https://js.hcaptcha.com/1/api.js?onload=onHCaptchaLoad&render=explicit';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        } else {
+            renderHCaptchaWidget(siteKey);
+        }
+    }
+
+    // Global callback when hcaptcha script loads
+    window.onHCaptchaLoad = function() {
+        const publicKey = document.getElementById('recaptchaContainer').dataset.publicKey;
+        if (publicKey) {
+            renderHCaptchaWidget(publicKey);
+        }
+    };
+
+    // Render hCaptcha widget
+    function renderHCaptchaWidget(siteKey) {
+        console.log('Rendering hCaptcha widget with sitekey:', siteKey);
+
+        try {
+            hcaptcha.render('recaptcha-widget', {
+                sitekey: siteKey,
+                callback: (token) => {
+                    recaptchaToken = token;
+                    console.log('hCaptcha completed, submitting registration...');
+
+                    // Hide recaptcha, show loading
+                    document.getElementById('recaptchaContainer').style.display = 'none';
+                    setLoading(true);
+
+                    // Retry registration with hcaptcha token
+                    submitRegistration().catch(error => {
+                        showError(error.message || '注册失败');
+                        setLoading(false);
+                        document.getElementById('registrationForm').style.display = 'block';
+                    });
+                },
+                'expired-callback': () => {
+                    recaptchaToken = '';
+                    showError('验证已过期，请重新验证');
+                },
+                'error-callback': () => {
+                    recaptchaToken = '';
+                    showError('验证失败，请重试');
+                }
+            });
+        } catch (e) {
+            console.error('Failed to render hCaptcha:', e);
+            showError('验证码加载失败');
+        }
+    }
+
+    // Handle successful registration
+    function handleRegistrationSuccess(data) {
+        if (data.access_token && data.user_id) {
+            showSuccess('注册成功！正在跳转...');
+            updateStep(3);
+
+            // Notify Android after a short delay to show the success message
+            setTimeout(() => {
+                /* 修改浏览器地址，只要地址不是https://wanchat.info/register，就会触发CreateAccountView.kt中的onPageNavigation函数，
+                   从而关闭webView，回到登陆界面
+                */
+                window.location.href ="https://wanchat.info/chat.html"
+            }, 1000);  // Wait 1 second before closing
+        }
+    }
+
+    // Fetch homeserver URL from well-known endpoint
+    async function fetchHomeserverUrl() {
+        try {
+            // Get domain from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const domain = urlParams.get('domain');
+            
+            if (!domain) {
+                throw new Error('缺少 domain 参数');
+            }
+            
+            console.log('Fetching well-known for domain:', domain);
+            
+            // Query .well-known/matrix/client endpoint
+            const response = await fetch(`https://${domain}/.well-known/matrix/client`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`获取 well-known 失败: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Well-known response:', data);
+            
+            // Extract base_url from m.homeserver
+            if (!data['m.homeserver'] || !data['m.homeserver'].base_url) {
+                throw new Error('响应中缺少 m.homeserver.base_url');
+            }
+            
+            homeserverUrl = data['m.homeserver'].base_url;
+            console.log('Homeserver URL:', homeserverUrl);
+
+            if(homeserverUrl.endsWith('/')){
+            homeserverUrl = homeserverUrl.substring(0, homeserverUrl.length - 1);
+            }
+            return homeserverUrl;
+        } catch (error) {
+            console.error('Error fetching homeserver URL:', error);
+            throw error;
+        }
+    }
+
+    // Initialize on page load
+    window.addEventListener('load', async () => {
+        // Show loading state initially
+        setLoading(true);
+        document.getElementById('registrationForm').style.display = 'none';
+
+        try {
+            console.log('Page loaded, fetching homeserver URL...');
+            
+            // First, fetch the homeserver URL from well-known
+            await fetchHomeserverUrl();
+            
+            console.log('Homeserver URL obtained, fetching registration flows...');
+            const flowsData = await getRegistrationFlows();
+            sessionId = flowsData.session;
+
+            console.log('Registration flows:', flowsData);
+
+            // Choose the best flow (prefer simplest)
+            const flow = chooseBestFlow(flowsData.flows);
+            authStages = flow.stages;
+
+            console.log('Selected flow:', flow);
+
+            // Show appropriate form fields
+            showFormFields(authStages);
+
+            console.log('Form fields displayed based on auth stages:', authStages);
+
+            // Hide loading and show form
+            setLoading(false);
+            document.getElementById('registrationForm').style.display = 'block';
+
+        } catch (error) {
+            console.error('Error initializing registration form:', error);
+            showError('初始化失败: ' + error.message);
+            setLoading(false);
+            document.getElementById('registrationForm').style.display = 'block';
+        }
+
+        // Check URL for email verification token
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const sid = urlParams.get('sid');
+        const clientSecretParam = urlParams.get('client_secret');
+
+        if (token && sid && clientSecretParam) {
+            // Email verified via link - this is deprecated but kept for compatibility
+            console.log('Email verification callback detected (deprecated)');
+        }
+    });
+</script>
+</body>
+</html>

@@ -50,6 +50,7 @@ class DefaultWebClientUrlForAuthenticationRetriever(
         
         // Use Cinny's registration page with the domain
         val cinnyRegistrationUrl = "https://app.cinny.in/register/$domain"
+        //val cinnyRegistrationUrl = "https://wanchat.info/register.html?domain=$domain"
         Timber.d("Using Cinny traditional registration for $domain: $cinnyRegistrationUrl")
         return cinnyRegistrationUrl
     }
