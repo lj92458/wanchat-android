@@ -3,14 +3,14 @@
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=element-x-android&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=element-x-android)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=element-x-android&metric=bugs)](https://sonarcloud.io/summary/new_code?id=element-x-android)
 [![codecov](https://codecov.io/github/element-hq/element-x-android/branch/develop/graph/badge.svg?token=ecwvia7amV)](https://codecov.io/github/vector-im/element-x-android)
-[![Element X Android Matrix room #element-x-android:matrix.org](https://img.shields.io/matrix/element-x-android:matrix.org.svg?label=%23element-x-android:matrix.org&logo=matrix&server_fqdn=matrix.org)](https://matrix.to/#/#element-x-android:matrix.org)
+[![wanchat Android Matrix room #element-x-android:matrix.org](https://img.shields.io/matrix/element-x-android:matrix.org.svg?label=%23element-x-android:matrix.org&logo=matrix&server_fqdn=matrix.org)](https://matrix.to/#/#element-x-android:matrix.org)
 [![Localazy](https://img.shields.io/endpoint?url=https%3A%2F%2Fconnect.localazy.com%2Fstatus%2Felement%2Fdata%3Fcontent%3Dall%26title%3Dlocalazy%26logo%3Dtrue)](https://localazy.com/p/element)
 
-# Element X Android
+# wanchat Android
 
-Element X Android is the next-generation [Matrix](https://matrix.org/) client provided by [Element](https://element.io/).
+万信wanchat，是[Element X](https://github.com/element-hq/element-x-android)的分支，它适应了中国的网络环境和中国人的使用习惯。它能自动删除，能用ntfy做通知提醒，能定期唤醒ntfy。
 
-Compared to the previous-generation [Element Classic](https://github.com/element-hq/element-android), the application is a total rewrite, using the [Matrix Rust SDK](https://github.com/matrix-org/matrix-rust-sdk) underneath and targeting devices running Android 7+. The UI layer is written using [Jetpack Compose](https://developer.android.com/jetpack/compose), and the navigation is managed using [Appyx](https://github.com/bumble-tech/appyx).
+wanchat Android is a fork of [Element X](https://github.com/element-hq/element-x-android), adapts to China's network environment and Chinese users' habits. It can automatically delete, use ntfy for notification reminders, and periodically wake up ntfy.
 
 [<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80">](https://play.google.com/store/apps/details?id=io.element.android.x)[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/io.element.android.x)
 
@@ -54,27 +54,27 @@ adb shell am broadcast -a com.android.systemui.demo -e command exit
 
 ## Translations
 
-Element X Android supports many languages. You can help us to translate the app in your language by joining our [Localazy project](https://localazy.com/p/element). You can also help us to improve the existing translations.
+wanchat Android supports many languages. You can help us to translate the app in your language by joining our [Localazy project](https://localazy.com/p/element). You can also help us to improve the existing translations.
 
 Note that for now, we keep control on the French and German translations.
 
-Translations can be checked screen per screen using our tool Element X Android Gallery, available at https://element-hq.github.io/element-x-android/. Note that this page is updated every Tuesday.
+Translations can be checked screen per screen using our tool wanchat Android Gallery, available at https://element-hq.github.io/element-x-android/. Note that this page is updated every Tuesday.
 
 More instructions about translating the application can be found at [CONTRIBUTING.md](CONTRIBUTING.md#strings).
 
 ## Rust SDK
 
-Element X leverages the [Matrix Rust SDK](https://github.com/matrix-org/matrix-rust-sdk) through an FFI layer that the final client can directly import and use.
+wanchat leverages the [Matrix Rust SDK](https://github.com/matrix-org/matrix-rust-sdk) through an FFI layer that the final client can directly import and use.
 
 We're doing this as a way to share code between platforms and while we've seen promising results it's still in the experimental stage and bound to change.
 
 ## Status
 
-This project is actively developed and supported. New users are recommended to use Element X instead of the previous-generation app.
+This project is actively developed and supported. New users are recommended to use wanchat instead of the previous-generation app.
 
 ## Minimum SDK version
 
-Element X Android requires a minimum SDK version of 24 (Android 7.0, Nougat). We aim to support devices running Android 7.0 and above, which covers a wide range of devices still in use today.
+wanchat Android requires a minimum SDK version of 24 (Android 7.0, Nougat). We aim to support devices running Android 7.0 and above, which covers a wide range of devices still in use today.
 
 Element Android Enterprise requires a minimum SDK version of 33 (Android 13, Tiramisu). For Element Enterprise, we support only devices that still receive security updates, which means devices running Android 13 and above. Android does not have a documented support policy, but some information can be found at [https://endoflife.date/android](https://endoflife.date/android).
 
@@ -96,7 +96,7 @@ onboarding](docs/_developer_onboarding.md#building-the-sdk-locally) instructions
 
 ## Support
 
-When you are experiencing an issue on Element X Android, please first search in [GitHub issues](https://github.com/element-hq/element-x-android/issues)
+When you are experiencing an issue on wanchat Android, please first search in [GitHub issues](https://github.com/element-hq/element-x-android/issues)
 and then in [#element-x-android:matrix.org](https://matrix.to/#/#element-x-android:matrix.org).
 If after your research you still have a question, ask at [#element-x-android:matrix.org](https://matrix.to/#/#element-x-android:matrix.org). Otherwise feel free to create a GitHub issue if you encounter a bug or a crash, by explaining clearly in detail what happened. You can also perform bug reporting from the application settings. This is especially recommended when you encounter a crash.
 
