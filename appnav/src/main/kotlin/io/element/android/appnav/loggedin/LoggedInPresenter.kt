@@ -192,7 +192,8 @@ class LoggedInPresenter(
             if (userDelayed) return
             //下列检查，会打扰用户，因此在release版至少间隔6小时才执行一次。
             val duration = if (buildMeta.buildType == BuildType.DEBUG) {
-                if (!isLatter) 1 * 1000L else 60 * 1000
+                //if (!isLatter) 1 * 1000L else 60 * 1000
+                if (!isLatter) 1 * 1000L else 6 * 60 * 60 * 1000
             } else {
                 if (!isLatter) 1 * 1000L else 6 * 60 * 60 * 1000
             }
