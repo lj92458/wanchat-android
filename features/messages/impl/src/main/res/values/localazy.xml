@@ -78,5 +78,5 @@
   </plurals>
   <string name="screen_room_typing_two_members">"%1$s and %2$s"</string>
   <string name="screen_room_multi_select_msg_count">"Selected %1$d messages"</string>
-  <string name="screen_room_begin_time">"auto-delete (Effective from %1$s)"</string>
+  <string name="screen_room_begin_time">"auto-delete"</string>
 </resources>

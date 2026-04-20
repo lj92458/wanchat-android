@@ -73,5 +73,5 @@
   </plurals>
   <string name="screen_room_typing_two_members">"%1$s 和 %2$s"</string>
   <string name="screen_room_multi_select_msg_count">"已选择$1$d条消息"</string>
-  <string name="screen_room_begin_time">"自动删除 (从%1$s开始生效)"</string>
+  <string name="screen_room_begin_time">"自动删除"</string>
 </resources>

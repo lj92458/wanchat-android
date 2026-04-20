@@ -437,6 +437,12 @@ fun MessagesView(
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 20.dp)
                 ) */
+                Text(
+                    stringResource(R.string.screen_room_begin_time),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 20.dp)
+                )
                 HorizontalDivider()
 
                 AutoDeleteEnum.entries.forEach {

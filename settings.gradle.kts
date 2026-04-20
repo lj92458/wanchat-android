@@ -30,7 +30,21 @@ dependencyResolutionManagement {
         flatDir {
             dirs("libraries/matrix/libs")
         }
-        mavenLocal() //有什么副作用吗？
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/lj92458/matrix-rust-components-kotlin")
+            /*credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }*/
+        }
+        /*maven {
+            url = uri("https://www.jitpack.io")
+            content {
+                includeModule("com.github.lj92458", "matrix-rust-components-kotlin")
+            }
+        }*/
+        //mavenLocal() //有什么副作用吗？
     }
 }
 
